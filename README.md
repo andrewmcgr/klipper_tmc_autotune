@@ -42,3 +42,6 @@ motor: ldo-36sth20-1004ahg
 ```
 
 This is compatible with homing overrides for sensorless homing, but take care to tune sg4_thrs through the autotune section if using 2240 or 5160 drivers, rather than by attempting to use gcode (that will not error, but won't do anything either as the autotune will override it). It should also work with any other homing overrides.
+
+Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8`)
+

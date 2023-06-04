@@ -37,6 +37,8 @@ class AutotuneTMC:
         self.toff = config.getint('toff', default=3, minval=1, maxval=15)
         self.sg4_thrs = config.getint('sg4_thrs', default=10, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=24.0, minval=0.0, maxval=60.0)
+        self.voltage_margin = config.getfloat('voltage_margin', default=None,
+                                              minval=0.0, maxval=6.0)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
         self.printer.register_event_handler("klippy:ready",
@@ -83,10 +85,14 @@ class AutotuneTMC:
         maxpwmrps = motor.maxpwmrps(volts=self.voltage)
         hstrt, hend = motor.hysteresis(volts=self.voltage,
                                        current=run_current,
-                                       tbl=tbl,
-                                       toff=toff)
+                                       tbl=self.tbl,
+                                       toff=self.toff)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
         velref = maxpwmrps * rdist
+        if self.voltage_margin is not None:
+            vref = tmc.fields.get_field("adc_vsupply") * 0.009732
+            vth = int((vref + self.voltage_margin) / 0.009732)
+            setfield('overvoltage_vth', vth)
         setvel('vsc', velref / 8)
         setvel('vcool', 1.25 * (velref / 8))
         setvel('vhigh', 0.8 * velref)
