@@ -104,21 +104,35 @@ class AutotuneTMC:
                                        tbl=self.tbl,
                                        toff=self.toff)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
+        # Speed at which we run out of PWM control and should switch to fullstep
         velref = maxpwmrps * rdist
         logging.info("autotune_tmc using max PWM speed %f", velref)
         if self.overvoltage_vth is not None:
             vth = int((self.overvoltage_vth / 0.009732))
             setfield('overvoltage_vth', vth)
         setfield('en_pwm_mode', True)
-        setvel('tpwmthrs', velref / 8)
-        # setfield('tpwmthrs', 0xfffff)
-        setvel('tcoolthrs', 1.25 * (velref / 8))
-        setvel('thigh', 0.5 * velref)
+        coolthrs = 0.8 * rdist
+        setvel('tcoolthrs', coolthrs)
+        if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
+            # we have SG4
+            setfield('sg4_thrs', self.sg4_thrs)
+            # 2240 doesn't care about pwmthrs vs coolthrs ordering, but this is desirable
+            setvel('tpwmthrs', velref / 8)
+        elif self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
+            # With SG4 on 2209, pwmthrs should be greater than coolthrs
+            setfield('sgthrs', self.sg4_thrs)
+            setvel('tpwmthrs', velref / 8)
+        else:
+            # We do not have SG4, so this makes the world safe for
+            # sensorless homing in the presence of CoolStep
+            setvel('tpwmthrs', 0.5 * rdist)
+        setvel('thigh', 0.8 * velref)
         setfield('tpfd', 1)
         setfield('tbl', self.tbl)
         setfield('toff', self.toff)
+        setfield('sfilt', 1)
         setfield('sgt', self.sgt)
-        setfield('sg4_thrs', self.sg4_thrs)
+        setfield('multistep_filt', True)
         setfield('pwm_autoscale', True)
         setfield('pwm_autograd', True)
         setfield('pwm_grad', pwmgrad)

@@ -1,5 +1,14 @@
 # klipper_tmc_autotune
-TMC stepper driver autotuning Klipper python extra
+TMC stepper driver autotuning Klipper python extra.
+
+This extra calculates good values for most registers of TMC stepper motor drivers given the datasheet information for the motor.
+
+In particular, it enables StealthChop where possible, CoolStep where possible, and correctly switches to full step operation at very high velocities. Where multiple modes are possible, it should choose the lowest power consumption and quietest modes available, subject to the constraints of sensorless homing (which do not allow certain combinations).
+
+# Current status
+
+- Support for TMC 2209, 2240, 5160 at least partially tested. 2208 and 2260 may work, but are completely untested.
+- Sensorless homing known to work on 2240 and 5160, provided you home fast enough (homing_speed should be numerically greater than the rotation_distance for those axes using sensorless homing). This should also work on other drivers, but presently untested. As always, be very careful attempting sensorless homing for the first time.
 
 # Installation
 
@@ -41,7 +50,7 @@ motor: ldo-42sth48-2004ac
 motor: ldo-36sth20-1004ahg
 ```
 
-This is compatible with homing overrides for sensorless homing, but take care to tune sg4_thrs through the autotune section if using 2240 or 5160 drivers, rather than by attempting to use gcode (that will not error, but won't do anything either as the autotune will override it). It should also work with any other homing overrides.
+This is compatible with homing overrides for sensorless homing, but take care to tune sg4_thrs through the autotune section if using 2240 or 5160 drivers, rather than by attempting to use gcode (that will not error, but won't do anything either as the autotune will override it). It should also work with any other homing overrides. Also use sg4_thrs via autotune with 2209, the code will correctly apply the value to the 2209's sgthrs field.
 
-Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8`)
+Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8` for the extruder)
 
