@@ -50,7 +50,9 @@ motor: ldo-42sth48-2004ac
 motor: ldo-36sth20-1004ahg
 ```
 
-This is compatible with homing overrides for sensorless homing, but take care to tune sg4_thrs through the autotune section if using 2240 or 5160 drivers, rather than by attempting to use gcode (that will not error, but won't do anything either as the autotune will override it). It should also work with any other homing overrides. Also use sg4_thrs via autotune with 2209, the code will correctly apply the value to the 2209's sgthrs field.
+This is compatible with homing overrides for sensorless homing, but take care to tune sg4_thrs and/or sgt through the autotune section if using 2240 or 5160 drivers, rather than by attempting to use gcode (that will not error, but won't do anything either as the autotune will override it). It should also work with any other homing overrides. Also use sg4_thrs via autotune with 2209, the code will correctly apply the value to the 2209's sgthrs field.
+
+For sensorless homing, use the sgt field as the homing threshold for 2240 and 5160, the sg4_thrs for 2209 or 2260. sg4_thrs is also the CoolStep current regulation threshold, and can be used to tune that on 2209, 2240 and 5160 (on 2209, the same value as is used for homing will work correctly for CoolStep). A default value of sg4_thrs = 80 is usually reasonably close for CoolStep.
 
 Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8` for the extruder)
 
