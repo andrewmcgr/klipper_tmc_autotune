@@ -118,7 +118,7 @@ class AutotuneTMC:
             setfield('sg4_thrs', self.sg4_thrs)
             # 2240 doesn't care about pwmthrs vs coolthrs ordering, but this is desirable
             setvel('tpwmthrs', velref / 8)
-        elif self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
+        elif self.tmc_object.fields.lookup_register("sgthrs", None) is not None:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
             setfield('sgthrs', self.sg4_thrs)
             setvel('tpwmthrs', velref / 8)
