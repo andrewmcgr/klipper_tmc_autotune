@@ -36,7 +36,7 @@ class AutotuneTMC:
                 % (self.motor_name))
         self.extrahyst = config.getint('extra_hysteresis', default=0, minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=1, minval=0, maxval=3)
-        self.toff = config.getint('toff', default=3, minval=1, maxval=15)
+        self.toff = config.getint('toff', default=0, minval=1, maxval=15)
         self.sgt = config.getint('sgt', default=1, minval=-64, maxval=63)
         self.sg4_thrs = config.getint('sg4_thrs', default=10, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=24.0, minval=0.0, maxval=60.0)
@@ -123,27 +123,34 @@ class AutotuneTMC:
             vth = int((self.overvoltage_vth / 0.009732))
             setfield('overvoltage_vth', vth)
         setfield('en_pwm_mode', True)
+        # One revolution every two seconds is about as slow as coolstep can go
         coolthrs = 0.8 * rdist
+        #setfield('tcoolthrs', 0xfffff)
         setvel('tcoolthrs', coolthrs)
         if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
             # we have SG4
             setfield('sg4_thrs', self.sg4_thrs)
+            setfield('sg4_filt_en', True)
             # 2240 doesn't care about pwmthrs vs coolthrs ordering, but this is desirable
-            setvel('tpwmthrs', velref / 8)
+            setvel('tpwmthrs', min(max(velref / 8, 1.125*coolthrs), 1.875*rdist))
         elif self.tmc_object.fields.lookup_register("sgthrs", None) is not None:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
             setfield('sgthrs', self.sg4_thrs)
-            setvel('tpwmthrs', velref / 8)
+            setvel('tpwmthrs', max(velref / 8, 1.125*coolthrs))
         else:
             # We do not have SG4, so this makes the world safe for
             # sensorless homing in the presence of CoolStep
-            setvel('tpwmthrs', 0.5 * rdist)
-        setvel('thigh', 0.8 * velref)
-        setfield('tpfd', 1)
+            setvel('tpwmthrs', 0.5*coolthrs)
+        setvel('thigh', 0.9 * velref)
+        setfield('vhighfs', True)
+        setfield('vhighchm', False)
+        setfield('tpfd', 3)
         setfield('tbl', self.tbl)
-        setfield('toff', self.toff)
+        setfield('toff', self.toff if self.toff > 0 else math.ceil((1e-5 * fclk - 12)/32))
         setfield('sfilt', 1)
         setfield('sgt', self.sgt)
+        setfield('fast_standstill', True)
+        setfield('small_hysteresis', True)
         setfield('multistep_filt', True)
         setfield('pwm_autoscale', True)
         setfield('pwm_autograd', True)
