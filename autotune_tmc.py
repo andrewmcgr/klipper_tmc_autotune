@@ -146,7 +146,7 @@ class AutotuneTMC:
         setfield('vhighchm', False)
         setfield('tpfd', 3)
         setfield('tbl', self.tbl)
-        setfield('toff', self.toff if self.toff > 0 else math.ceil((1e-5 * fclk - 12)/32))
+        setfield('toff', self.toff if self.toff > 0 else int(math.ceil((1e-5 * fclk - 12)/32)))
         setfield('sfilt', 1)
         setfield('sgt', self.sgt)
         setfield('fast_standstill', True)
