@@ -20,9 +20,9 @@ class MotorConstants:
     def pwmgrad(self, fclk=12.5e6, steps=0, volts=24.0):
         if steps==0:
             steps=self.S
-        return math.ceil(self.cbemf * 2 * math.pi * fclk  * 1.46 / (volts * 256.0 * steps))
+        return int(math.ceil(self.cbemf * 2 * math.pi * fclk  * 1.46 / (volts * 256.0 * steps)))
     def pwmofs(self, volts=24.0):
-        return math.ceil(374 * self.R * self.L / volts)
+        return int(math.ceil(374 * self.R * self.L / volts))
     # Maximum revolutions per second before PWM maxes out.
     def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0):
         if steps==0:
@@ -35,8 +35,8 @@ class MotorConstants:
         dcoilblank = volts * tblank / self.L
         dcoilsd = self.R * I * 2.0 * tsd / self.L
         hstartmin = 0.5 + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / I) / 32 - 8
-        hstrt = min(math.ceil(max(hstartmin + 0.5, -2.0)), 8)
-        hend = min(math.ceil(hstartmin + 0.5) - hstrt, 12)
+        hstrt = min(int(math.ceil(max(hstartmin + 0.5, -2.0))), 8)
+        hend = min(int(math.ceil(hstartmin + 0.5)) - hstrt, 12)
         return hstrt - 1, hend + 3
 
 

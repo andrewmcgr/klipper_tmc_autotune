@@ -1,4 +1,4 @@
-import re, logging
+import math, re, logging
 import configfile
 import stepper
 from . import tmc
@@ -36,7 +36,7 @@ class AutotuneTMC:
                 % (self.motor_name))
         self.extrahyst = config.getint('extra_hysteresis', default=0, minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=1, minval=0, maxval=3)
-        self.toff = config.getint('toff', default=3, minval=1, maxval=15)
+        self.toff = config.getint('toff', default=0, minval=1, maxval=15)
         self.sgt = config.getint('sgt', default=1, minval=-64, maxval=63)
         self.sg4_thrs = config.getint('sg4_thrs', default=10, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=24.0, minval=0.0, maxval=60.0)
@@ -95,14 +95,26 @@ class AutotuneTMC:
         motor = self.motor_object
         setfield = self._set_driver_field
         setvel = self._set_driver_velocity_field
+        fclk = tmco.mcu_tmc.get_tmc_frequency()
+        # calculate the highest pwm_freq that gives less than 50 kHz chopping
+        pwm_freq = next((i
+                         for i in [(3, 2./410),
+                                   (2, 2./512),
+                                   (1, 2./683),
+                                   (0, 2./1024),
+                                   (0, 0.) # Default case, just do the best we can.
+                                   ]
+                         if fclk*i[1] < 40e3))[0]
+        setfield('pwm_freq', pwm_freq)
         run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
-        pwmgrad = motor.pwmgrad(volts=self.voltage)
+        pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=fclk)
         pwmofs = motor.pwmofs(volts=self.voltage)
         maxpwmrps = motor.maxpwmrps(volts=self.voltage)
         hstrt, hend = motor.hysteresis(volts=self.voltage,
                                        current=run_current,
                                        tbl=self.tbl,
-                                       toff=self.toff)
+                                       toff=self.toff,
+                                       fclk=fclk)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
         # Speed at which we run out of PWM control and should switch to fullstep
         velref = maxpwmrps * rdist
@@ -111,27 +123,34 @@ class AutotuneTMC:
             vth = int((self.overvoltage_vth / 0.009732))
             setfield('overvoltage_vth', vth)
         setfield('en_pwm_mode', True)
+        # One revolution every two seconds is about as slow as coolstep can go
         coolthrs = 0.8 * rdist
+        #setfield('tcoolthrs', 0xfffff)
         setvel('tcoolthrs', coolthrs)
         if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
             # we have SG4
             setfield('sg4_thrs', self.sg4_thrs)
+            setfield('sg4_filt_en', True)
             # 2240 doesn't care about pwmthrs vs coolthrs ordering, but this is desirable
-            setvel('tpwmthrs', velref / 8)
+            setvel('tpwmthrs', min(max(velref / 8, 1.125*coolthrs), 1.875*rdist))
         elif self.tmc_object.fields.lookup_register("sgthrs", None) is not None:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
             setfield('sgthrs', self.sg4_thrs)
-            setvel('tpwmthrs', velref / 8)
+            setvel('tpwmthrs', max(velref / 8, 1.125*coolthrs))
         else:
             # We do not have SG4, so this makes the world safe for
             # sensorless homing in the presence of CoolStep
-            setvel('tpwmthrs', 0.5 * rdist)
-        setvel('thigh', 0.8 * velref)
-        setfield('tpfd', 1)
+            setvel('tpwmthrs', 0.5*coolthrs)
+        setvel('thigh', 0.9 * velref)
+        setfield('vhighfs', True)
+        setfield('vhighchm', False)
+        setfield('tpfd', 3)
         setfield('tbl', self.tbl)
-        setfield('toff', self.toff)
+        setfield('toff', self.toff if self.toff > 0 else math.ceil((1e-5 * fclk - 12)/32))
         setfield('sfilt', 1)
         setfield('sgt', self.sgt)
+        setfield('fast_standstill', True)
+        setfield('small_hysteresis', True)
         setfield('multistep_filt', True)
         setfield('pwm_autoscale', True)
         setfield('pwm_autograd', True)
@@ -139,9 +158,10 @@ class AutotuneTMC:
         setfield('pwm_ofs', pwmofs)
         setfield('pwm_reg', 15)
         setfield('pwm_lim', 12)
-        setfield('semin', 2)
-        setfield('semax', 8)
+        setfield('semin', 4)
+        setfield('semax', 2)
         setfield('seup', 3)
+        setfield('sedn', 1)
         setfield('iholddelay', 12)
         setfield('irundelay', 2)
         setfield('hstrt', hstrt)
