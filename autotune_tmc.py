@@ -1,4 +1,4 @@
-import re, logging
+import math, re, logging
 import configfile
 import stepper
 from . import tmc
@@ -95,14 +95,26 @@ class AutotuneTMC:
         motor = self.motor_object
         setfield = self._set_driver_field
         setvel = self._set_driver_velocity_field
+        fclk = tmco.mcu_tmc.get_tmc_frequency()
+        # calculate the highest pwm_freq that gives less than 50 kHz chopping
+        pwm_freq = next((i
+                         for i in [(3, 2./410),
+                                   (2, 2./512),
+                                   (1, 2./683),
+                                   (0, 2./1024),
+                                   (0, 0.) # Default case, just do the best we can.
+                                   ]
+                         if fclk*i[1] < 40e3))[0]
+        setfield('pwm_freq', pwm_freq)
         run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
-        pwmgrad = motor.pwmgrad(volts=self.voltage)
+        pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=fclk)
         pwmofs = motor.pwmofs(volts=self.voltage)
         maxpwmrps = motor.maxpwmrps(volts=self.voltage)
         hstrt, hend = motor.hysteresis(volts=self.voltage,
                                        current=run_current,
                                        tbl=self.tbl,
-                                       toff=self.toff)
+                                       toff=self.toff,
+                                       fclk=fclk)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
         # Speed at which we run out of PWM control and should switch to fullstep
         velref = maxpwmrps * rdist
