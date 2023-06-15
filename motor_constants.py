@@ -28,13 +28,13 @@ class MotorConstants:
         if steps==0:
             steps=self.S
         return (255 - self.pwmofs(volts)) / ( math.pi * self.pwmgrad(fclk, steps))
-    def hysteresis(self, fclk=12.5e6, volts=24.0, current=0.0, tbl=1, toff=3):
+    def hysteresis(self, extra=0, fclk=12.5e6, volts=24.0, current=0.0, tbl=1, toff=3):
         I = current if current > 0.0 else self.I
         tblank = 16.0 * (1.5 ** tbl) / fclk
         tsd = (12.0 + 32.0 * toff) / fclk
         dcoilblank = volts * tblank / self.L
         dcoilsd = self.R * I * 2.0 * tsd / self.L
-        hstartmin = 0.5 + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / I) / 32 - 8
+        hstartmin = extra + 0.5 + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / I) / 32 - 8
         hstrt = min(int(math.ceil(max(hstartmin + 0.5, -2.0))), 8)
         hend = min(int(math.ceil(hstartmin + 0.5)) - hstrt, 12)
         return hstrt - 1, hend + 3
