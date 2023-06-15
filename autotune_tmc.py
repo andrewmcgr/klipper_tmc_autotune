@@ -24,7 +24,8 @@ class AutotuneTMC:
             raise config.error(
                 "Could not find TMC driver required by tmc autotuning for %s"
                 % (self.name,))
-        self.stealth = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+        stealth = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+        self.stealth = config.getboolean('stealth', default=stealth)
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
