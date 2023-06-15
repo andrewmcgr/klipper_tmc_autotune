@@ -56,3 +56,14 @@ For sensorless homing, use the sgt field as the homing threshold for 2240 and 51
 
 Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8` for the extruder)
 
+If you want, add the following to your moonraker.conf, which will enable automatic updates:
+```
+[update_manager klipper_tmc_autotune]
+type: git_repo
+channel: dev
+path: ~/klipper_tmc_autotune
+origin: https://github.com/andrewmcgr/klipper_tmc_autotune.git
+managed_services: klipper
+primary_branch: main
+```
+
