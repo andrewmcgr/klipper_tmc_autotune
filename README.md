@@ -3,7 +3,7 @@ TMC stepper driver autotuning Klipper python extra.
 
 This extra calculates good values for most registers of TMC stepper motor drivers given the datasheet information for the motor.
 
-In particular, it enables StealthChop where possible, CoolStep where possible, and correctly switches to full step operation at very high velocities. Where multiple modes are possible, it should choose the lowest power consumption and quietest modes available, subject to the constraints of sensorless homing (which do not allow certain combinations).
+In particular, it enables StealthChop by default on Z motors and extruders, CoolStep where possible, and correctly switches to full step operation at very high velocities. Where multiple modes are possible, it should choose the lowest power consumption and quietest modes available, subject to the constraints of sensorless homing (which do not allow certain combinations).
 
 # Current status
 
@@ -30,12 +30,20 @@ sg4_thrs: 80
 # Sensorless homing threshold, tune if using sensorless
 voltage: 24.0
 # Motor supply voltage for this stepper driver
+stealth: False
+# Enable StealthChop on this driver
+extra_hysteresis: 3
+# Add some hysteresis to make the motor quieter (use only as much as necessary)
 [autotune_tmc stepper_y]
 motor: ldo-42sth48-2004mah
 sg4_thrs: 10
 # Sensorless homing threshold, tune if using sensorless
 voltage: 24.0
 # Motor supply voltage for this stepper driver
+stealth: False
+# Enable StealthChop on this driver
+extra_hysteresis: 3
+# Add some hysteresis to make the motor quieter (use only as much as necessary)
 
 [autotune_tmc stepper_z]
 motor: ldo-42sth48-2004ac
