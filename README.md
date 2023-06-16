@@ -62,7 +62,7 @@ This is compatible with homing overrides for sensorless homing, but take care to
 
 For sensorless homing, use the sgt field as the homing threshold for 2240 and 5160, the sg4_thrs for 2209 or 2260. sg4_thrs is also the CoolStep current regulation threshold, and can be used to tune that on 2209, 2240 and 5160 (on 2209, the same value as is used for homing will work correctly for CoolStep). A default value of sg4_thrs = 80 is usually reasonably close for CoolStep.
 
-Add a `voltage_margin` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `voltage_margin: 0.8` for the extruder)
+Add a `overvoltage_vth` if you have 2240 or 5160 drivers and wish to enable the overvoltage snubber (BTT SB2240 users should use `overvoltage_vth` for the extruder, reading the actual toolhead voltage and adding 0.8 V)
 
 If you want, add the following to your moonraker.conf, which will enable automatic updates:
 ```
