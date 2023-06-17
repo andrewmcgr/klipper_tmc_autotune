@@ -7,8 +7,8 @@ In particular, it enables StealthChop by default on Z motors and extruders, Cool
 
 # Current status
 
-- Support for TMC 2209, 2240, 5160 at least partially tested. 2208 and 2260 may work, but are completely untested.
-- Sensorless homing known to work on 2240 and 5160, provided you home fast enough (homing_speed should be numerically greater than the rotation_distance for those axes using sensorless homing). This should also work on other drivers, but presently untested. As always, be very careful attempting sensorless homing for the first time.
+- Support for TMC 2209, 2240, 5160 at least partially tested. 2130, 2208 and 2660 may work, but are completely untested.
+- Sensorless homing known to work on 2209, 2240 and 5160, provided you home fast enough (homing_speed should be numerically greater than the rotation_distance for those axes using sensorless homing). As always, be very careful attempting sensorless homing for the first time.
 
 # Installation
 
