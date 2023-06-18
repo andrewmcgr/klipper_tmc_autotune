@@ -9,7 +9,7 @@ TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660",
 class AutotuneTMC:
     def __init__(self, config):
         self.printer = config.get_printer()
-        self.name = config.get_name().split()[-1]
+        self.name = config.get_name().split(maxsplit=1)[-1]
         if not config.has_section(self.name):
             raise config.error(
                 "Could not find config section '[%s]' required by tmc autotuning"
