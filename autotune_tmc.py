@@ -147,6 +147,8 @@ class AutotuneTMC:
         setfield('en_pwm_mode', self.stealth)
         if self.stealth:
             setfield('tpwmthrs', 0xfffff)
+        else:
+            setfield('tpwmthrs', 0)
         setvel('thigh', 0.45 * velref)
         setfield('vhighfs', True)
         setfield('vhighchm', True)
