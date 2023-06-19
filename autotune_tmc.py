@@ -1,4 +1,4 @@
-import math, re, logging
+import math, re, logging, os
 import configfile
 import stepper
 from . import tmc
@@ -9,6 +9,17 @@ TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660",
 class AutotuneTMC:
     def __init__(self, config):
         self.printer = config.get_printer()
+        # Load motor databse
+        pconfig = self.printer.lookup_object('configfile')
+        dir_name = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(dir_name, 'motor_database.cfg')
+        try:
+            dconfig = pconfig.read_config(filename)
+        except Exception:
+            raise config.error("Cannot load config '%s'" % (filename,))
+        for c in dconfig.get_prefix_sections(''):
+            self.printer.load_object(dconfig, c.get_name())
+        # Now find our stepper and driver
         self.name = config.get_name().split(maxsplit=1)[-1]
         if not config.has_section(self.name):
             raise config.error(
@@ -32,7 +43,7 @@ class AutotuneTMC:
         self.motor = config.get('motor')
         self.motor_object = None
         self.motor_name = "motor_constants " + self.motor
-        if not config.has_section(self.motor_name):
+        if not self.printer.lookup_object(self.motor_name):
             raise config.error(
                 "Could not find config section '[%s]' required by tmc autotuning"
                 % (self.motor_name))

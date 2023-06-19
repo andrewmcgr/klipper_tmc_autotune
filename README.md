@@ -20,8 +20,6 @@ wget -O - https://raw.githubusercontent.com/andrewmcgr/klipper_tmc_autotune/main
 
 Then, add the following to your printer.cfg, which assumes you have a Voron 2.4. Remove any sections for steppers you don't have (e.g. if you have less than four Z motors), add more if required. Motor names are in the `motor_database.cfg`. If a motor is not listed, add it, taking careful note of the units. PRs for more motors gratefully accepted.
 ```
-[include motor_database.cfg]
-
 [autotune_tmc stepper_x]
 motor: ldo-42sth48-2004mah
 sg4_thrs: 80
