@@ -20,7 +20,8 @@ class AutotuneTMC:
         for c in dconfig.get_prefix_sections(''):
             self.printer.load_object(dconfig, c.get_name())
         # Now find our stepper and driver
-        self.name = config.get_name().split(maxsplit=1)[-1]
+        # Using positional arguments for maxsplit works with both py2 and py3
+        self.name = config.get_name().split(None, 1)[-1]
         if not config.has_section(self.name):
             raise config.error(
                 "Could not find config section '[%s]' required by tmc autotuning"
