@@ -12,14 +12,13 @@ In particular, it enables StealthChop by default on Z motors and extruders, Cool
 
 # Installation
 
-Preparation:
-```
-git clone https://github.com/andrewmcgr/klipper_tmc_autotune.git
-ln -sr klipper_tmc_autotune/autotune_tmc.py $HOME/klipper/klippy/extras/
-ln -sr klipper_tmc_autotune/motor_constants.py $HOME/klipper/klippy/extras/
+To install this plugin, run the installation script using the following command over SSH. This script will download this GitHub repository to your RaspberryPi home directory, and link the files in the Klipper folder.
+
+```bash
+wget -O - https://raw.githubusercontent.com/andrewmcgr/klipper_tmc_autotune/main/install.sh | bash
 ```
 
-Add the following to your printer.cfg, which assumes you have a Voron 2.4. Remove any sections for steppers you don't have (e.g. if you have less than four Z motors), add more if required. Motor names are in the `motor_database.cfg`. If a motor is not listed, add it, taking careful note of the units. PRs for more motors gratefully accepted.
+Then, add the following to your printer.cfg, which assumes you have a Voron 2.4. Remove any sections for steppers you don't have (e.g. if you have less than four Z motors), add more if required. Motor names are in the `motor_database.cfg`. If a motor is not listed, add it, taking careful note of the units. PRs for more motors gratefully accepted.
 ```
 [autotune_tmc stepper_x]
 motor: ldo-42sth48-2004mah
@@ -70,5 +69,6 @@ path: ~/klipper_tmc_autotune
 origin: https://github.com/andrewmcgr/klipper_tmc_autotune.git
 managed_services: klipper
 primary_branch: main
+install_script: install.sh
 ```
 
