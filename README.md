@@ -12,7 +12,7 @@ In particular, it enables StealthChop by default on Z motors and extruders, Cool
 - Support for TMC2209, TMC2240, and TMC5160 at least partially tested.
 - Support for TMC2130, TMC2208 and TMC2660 may work, but is completely untested.
 - Sensorless homing with autotuning enabled is known to work on TMC2209, TMC2240 and TMC5160, provided you home fast enough (homing_speed should be numerically greater than rotation_distance for those axes using sensorless homing). As always, be very careful when trying sensorless homing for the first time.
-- StealthChop support for X/Y axes is possible, but not recommended at this time. Since Klipper doesn't provide the necessary hooks to safely switch the TMC mode, this may cause loose steps or unwanted vibrations near the switching speed.
+- StealthChop support for X/Y axes is possible, but not recommended at this time. Since Klipper doesn't provide the necessary hooks to safely switch the TMC mode, this may cause lost steps or unwanted vibrations near the switching speed.
 
 
 ## Installation
@@ -79,7 +79,7 @@ All `[autotune_tmc]` sections accept additional parameters to tweak the behavior
 
 ## User-defined motors
 
-The motor names and their physical constants are in the [motor_database.cfg file](motor_database.cfg), which is automatically loaded by the script. If a motor is not listed, feel free to add its proper definition in your own `printer.cfg` configuration file by adding this section (PRs for other motors are also welcome). You can usually find this information in their datasheets but pay a very special attention to the units!
+The motor names and their physical constants are in the [motor_database.cfg file](motor_database.cfg), which is automatically loaded by the script. If a motor is not listed, feel free to add its proper definition in your own `printer.cfg` configuration file by adding this section (PRs for other motors are also welcome). You can usually find this information in their datasheets but pay very special attention to the units!
 ```
 [motor_constants my_custom_motor]
 # Coil resistance, Ohms
