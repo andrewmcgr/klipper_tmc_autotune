@@ -24,7 +24,7 @@ wget -O - https://raw.githubusercontent.com/andrewmcgr/klipper_tmc_autotune/main
 ```
 
 Then, add the following to your `moonraker.conf` to enable automatic updates:
-```
+```ini
 [update_manager klipper_tmc_autotune]
 type: git_repo
 channel: dev
@@ -39,7 +39,7 @@ install_script: install.sh
 ## Main configuration
 
 Add the following to your `printer.cfg` (remove or add any sections as needed) to enable the autotuning for your TMC drivers and motors and restart Klipper:
-```
+```ini
 [autotune_tmc stepper_x]
 motor: ldo-42sth48-2004mah
 [autotune_tmc stepper_y]
@@ -80,7 +80,7 @@ All `[autotune_tmc]` sections accept additional parameters to tweak the behavior
 ## User-defined motors
 
 The motor names and their physical constants are in the [motor_database.cfg file](motor_database.cfg), which is automatically loaded by the script. If a motor is not listed, feel free to add its proper definition in your own `printer.cfg` configuration file by adding this section (PRs for other motors are also welcome). You can usually find this information in their datasheets but pay very special attention to the units!
-```
+```ini
 [motor_constants my_custom_motor]
 # Coil resistance, Ohms
 resistance: 0.00
