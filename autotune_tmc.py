@@ -118,7 +118,7 @@ class AutotuneTMC:
                                    (0, 2./1024),
                                    (0, 0.) # Default case, just do the best we can.
                                    ]
-                         if fclk*i[1] < 40e3))[0]
+                         if fclk*i[1] < 55e3))[0]
         setfield('pwm_freq', pwm_freq)
         run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
         pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=fclk)
