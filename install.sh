@@ -44,6 +44,7 @@ function link_extension {
     echo "[INSTALL] Linking extension to Klipper..."
     ln -sfn "${AUTOTUNETMC_PATH}/autotune_tmc.py" "${KLIPPER_PATH}/klippy/extras/autotune_tmc.py"
     ln -sfn "${AUTOTUNETMC_PATH}/motor_constants.py" "${KLIPPER_PATH}/klippy/extras/motor_constants.py"
+    ln -sfn "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PATH}/klippy/extras/motor_database.cfg"
 }
 
 function restart_klipper {
