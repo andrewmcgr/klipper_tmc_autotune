@@ -165,11 +165,11 @@ class AutotuneTMC:
         self._set_driver_field('pwm_lim', 4)
         self._set_driver_field('en_pwm_mode', pwm_mode)
         if self.stealth_and_spread:
-            self._set_driver_field('tpwmthrs', )
+            self._set_driver_field('tpwmthrs', pwmthrs)
         if self.stealth:
-            self._set_driver_field('tpwmthrs', 0xfffff)
-        else:
             self._set_driver_field('tpwmthrs', 0)
+        else:
+            self._set_driver_field('tpwmthrs', 0xfffff)
     def _setup_spreadcycle(self):
         self._set_driver_field('tpfd', 3)
         self._set_driver_field('tbl', self.tbl)
