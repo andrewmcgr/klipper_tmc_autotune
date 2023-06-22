@@ -8,6 +8,7 @@ TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660",
 
 class AutotuneTMC:
     def __init__(self, config):
+        self.tmc_section = None
         self.printer = config.get_printer()
         # Load motor databse
         pconfig = self.printer.lookup_object('configfile')
