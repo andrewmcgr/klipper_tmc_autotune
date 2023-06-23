@@ -21,13 +21,14 @@ class MotorConstants:
         if steps==0:
             steps=self.S
         return int(math.ceil(self.cbemf * 2 * math.pi * fclk  * 1.46 / (volts * 256.0 * steps)))
-    def pwmofs(self, volts=24.0):
-        return int(math.ceil(374 * self.R * self.L / volts))
+    def pwmofs(self, volts=24.0, current=0.0):
+        I = current if current > 0.0 else self.I
+        return int(math.ceil(374 * self.R * I / volts))
     # Maximum revolutions per second before PWM maxes out.
-    def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0):
+    def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0, current=0.0):
         if steps==0:
             steps=self.S
-        return (255 - self.pwmofs(volts)) / ( math.pi * self.pwmgrad(fclk, steps))
+        return (255 - self.pwmofs(volts, current)) / ( math.pi * self.pwmgrad(fclk, steps))
     def hysteresis(self, extra=0, fclk=12.5e6, volts=24.0, current=0.0, tbl=1, toff=3):
         I = current if current > 0.0 else self.I
         tblank = 16.0 * (1.5 ** tbl) / fclk
