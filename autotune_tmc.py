@@ -1,32 +1,30 @@
-import math, re, logging, os
-import configfile
-import stepper
+import math, logging, os
 from . import tmc
 
-TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660",
-    "tmc5160"]
+TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
 
 class AutotuneTMC:
     def __init__(self, config):
         self.tmc_section = None
         self.printer = config.get_printer()
-        # Load motor databse
+
+        # Load motor database
         pconfig = self.printer.lookup_object('configfile')
-        dir_name = os.path.dirname(os.path.realpath(__file__))
-        filename = os.path.join(dir_name, 'motor_database.cfg')
+        dirname = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(dirname, 'motor_database.cfg')
         try:
-            dconfig = pconfig.read_config(filename)
+            motor_db = pconfig.read_config(filename)
         except Exception:
             raise config.error("Cannot load config '%s'" % (filename,))
-        for c in dconfig.get_prefix_sections(''):
-            self.printer.load_object(dconfig, c.get_name())
-        # Now find our stepper and driver
-        # Using positional arguments for maxsplit works with both py2 and py3
+        for motor in motor_db.get_prefix_sections(''):
+            self.printer.load_object(motor_db, motor.get_name())
+
+        # Now find our stepper and driver in the running Klipper config
         self.name = config.get_name().split(None, 1)[-1]
         if not config.has_section(self.name):
             raise config.error(
-                "Could not find config section '[%s]' required by tmc autotuning"
-                % (self.name,))
+                "Could not find stepper config section '[%s]' required by TMC autotuning"
+                % (self.name))
         for driver in TRINAMIC_DRIVERS:
             driver_name = "%s %s" % (driver, self.name)
             if config.has_section(driver_name):
@@ -35,8 +33,19 @@ class AutotuneTMC:
                 break
         if self.tmc_section is None:
             raise config.error(
-                "Could not find TMC driver required by tmc autotuning for %s"
-                % (self.name,))
+                "Could not find any TMC driver config section for '%s' required by TMC autotuning"
+                % (self.name))
+
+        # AutotuneTMC config parameters
+        self.motor = config.get('motor')
+        self.motor_name = "motor_constants " + self.motor
+        try:
+            self.printer.lookup_object(self.motor_name)
+        except Exception:
+            raise config.error(
+                "Could not find motor definition '[%s]' required by TMC autotuning. "
+                "It is not part of the database, please define it in your config!"
+                % (self.motor_name))
         stealth = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
         self.stealth_and_spread = config.getboolean('stealth_and_spread', default=False)
         self.stealth = config.getboolean('stealth', default=stealth)
@@ -45,13 +54,7 @@ class AutotuneTMC:
         self.tmc_init_registers=None # Ditto
         self.run_current = 0.0
         self.fclk = None
-        self.motor = config.get('motor')
         self.motor_object = None
-        self.motor_name = "motor_constants " + self.motor
-        if not self.printer.lookup_object(self.motor_name):
-            raise config.error(
-                "Could not find config section '[%s]' required by tmc autotuning"
-                % (self.motor_name))
         self.extra_hysteresis = config.getint('extra_hysteresis', default=0, minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=2, minval=0, maxval=3)
         self.toff = config.getint('toff', default=0, minval=1, maxval=15)
