@@ -180,7 +180,7 @@ class AutotuneTMC:
         self._set_driver_field('sgt', self.sgt)
         self._set_driver_field('fast_standstill', True)
         self._set_driver_field('small_hysteresis', False)
-        self._set_driver_field('semin', 5)
+        self._set_driver_field('semin', 8)
         self._set_driver_field('semax', 4)
         self._set_driver_field('seup', 3)
         self._set_driver_field('sedn', 0)
