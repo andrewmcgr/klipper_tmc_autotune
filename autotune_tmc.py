@@ -173,7 +173,7 @@ class AutotuneTMC:
     def _setup_spreadcycle(self):
         self._set_driver_field('tpfd', 3)
         self._set_driver_field('tbl', self.tbl)
-        self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.75e-5 * self.fclk - 12)/32)))
+        self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.5e-5 * self.fclk - 12)/32)))
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field('tcoolthrs', coolthrs)
         self._set_driver_field('sgt', self.sgt)
