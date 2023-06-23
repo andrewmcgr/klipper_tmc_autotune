@@ -43,6 +43,7 @@ class AutotuneTMC:
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
+        self.run_current = 0.0
         self.fclk = None
         self.motor = config.get('motor')
         self.motor_object = None
@@ -156,7 +157,7 @@ class AutotuneTMC:
         # gives more data about the motor and is needed for CoolStep.
         motor = self.motor_object
         pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=self.fclk)
-        pwmofs = motor.pwmofs(volts=self.voltage)
+        pwmofs = motor.pwmofs(volts=self.voltage, current=self.run_current)
         self._set_driver_field('pwm_autoscale', True)
         self._set_driver_field('pwm_autograd', True)
         self._set_driver_field('pwm_grad', pwmgrad)
@@ -173,7 +174,7 @@ class AutotuneTMC:
     def _setup_spreadcycle(self):
         self._set_driver_field('tpfd', 3)
         self._set_driver_field('tbl', self.tbl)
-        self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.5e-5 * self.fclk - 12)/32)))
+        self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.85e-5 * self.fclk - 12)/32)))
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field('tcoolthrs', coolthrs)
         self._set_driver_field('sgt', self.sgt)
@@ -193,12 +194,12 @@ class AutotuneTMC:
         self._set_driver_field('vhighchm', True)
     def tune_driver(self, print_time=None):
         tmco = self.tmc_object
-        run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
-        self._set_hysteresis(run_current)
+        self.run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
+        self._set_hysteresis(self.run_current)
         self._set_pwmfreq()
         self._set_sg4thrs()
         motor = self.motor_object
-        maxpwmrps = motor.maxpwmrps(volts=self.voltage)
+        maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
         # Speed at which we run out of PWM control and should switch to fullstep
         vmaxpwm = maxpwmrps * rdist
