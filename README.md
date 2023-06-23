@@ -58,7 +58,7 @@ motor: ldo-42sth48-2004ac
 motor: ldo-36sth20-1004ahg
 ```
 
-All `[autotune_tmc]` sections accept additional parameters to tweak the behavior of the autotune process for each motor:
+All the `[autotune_tmc]` sections accept additional parameters to tweak the behavior of the autotune process for each motor:
 
 | Parameter | Default value | Range | Description |
 | --- | --- | --- | --- |
@@ -76,6 +76,11 @@ All `[autotune_tmc]` sections accept additional parameters to tweak the behavior
   >
   > This autotuning extension can be used together with homing overrides for sensorless homing. However, remember to adjust the `sg4_thrs` and/or `sgt` values specifically in the autotune sections. Attempting to make these changes via gcode will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
   > Also check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1` not `diag0`. There may be other unusual drivers.
+
+Also if needed, you can adjust everything on the go when the printer is running by using the `AUTOTUNE_TMC` macro in the Klipper console. All previous parameters are available:
+```
+AUTOTUNE_TMC STEPPER=<name> [PARAMETER=<value>]
+```
 
 
 ## User-defined motors
