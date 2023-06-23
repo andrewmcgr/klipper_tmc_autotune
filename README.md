@@ -75,6 +75,7 @@ All `[autotune_tmc]` sections accept additional parameters to tweak the behavior
   > Note:
   >
   > This autotuning extension can be used together with homing overrides for sensorless homing. However, remember to adjust the `sg4_thrs` and/or `sgt` values specifically in the autotune sections. Attempting to make these changes via gcode will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
+  > Also check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1` not `diag0`. There may be other unusual drivers.
 
 
 ## User-defined motors
