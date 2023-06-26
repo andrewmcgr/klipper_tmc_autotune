@@ -165,7 +165,7 @@ class AutotuneTMC:
         self._set_driver_field('pwm_autograd', True)
         self._set_driver_field('pwm_grad', pwmgrad)
         self._set_driver_field('pwm_ofs', pwmofs)
-        self._set_driver_field('pwm_reg', 8)
+        self._set_driver_field('pwm_reg', 15)
         self._set_driver_field('pwm_lim', 4)
         self._set_driver_field('en_pwm_mode', pwm_mode)
         if self.stealth_and_spread:
@@ -187,6 +187,7 @@ class AutotuneTMC:
         self._set_driver_field('semax', 4)
         self._set_driver_field('seup', 3)
         self._set_driver_field('sedn', 0)
+        # If we drop to 1/4 current, high accels don't work right.
         self._set_driver_field('seimin', 0)
         self._set_driver_field('sfilt', 0)
         self._set_driver_field('iholddelay', 12)
@@ -194,7 +195,8 @@ class AutotuneTMC:
     def _setup_highspeed(self, vhigh):
         self._set_driver_velocity_field('thigh', vhigh)
         self._set_driver_field('vhighfs', True)
-        self._set_driver_field('vhighchm', True)
+        # Even though we are fullstepping, we want SpreadCycle control.
+        self._set_driver_field('vhighchm', False)
     def tune_driver(self, print_time=None):
         tmco = self.tmc_object
         self.run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
