@@ -12,7 +12,8 @@ In particular, it enables StealthChop by default on Z motors and extruders, Cool
 - Support for TMC2209, TMC2240, and TMC5160 at least partially tested.
 - Support for TMC2130, TMC2208 and TMC2660 may work, but is completely untested.
 - Sensorless homing with autotuning enabled is known to work on TMC2209, TMC2240 and TMC5160, provided you home fast enough (homing_speed should be numerically greater than rotation_distance for those axes using sensorless homing). As always, be very careful when trying sensorless homing for the first time.
-- StealthChop support for X/Y axes is possible, but not recommended at this time. Since Klipper doesn't provide the necessary hooks to safely switch the TMC mode, this may cause lost steps or unwanted vibrations near the switching speed.
+- Due to the limitations of Klipper's current design, it is not possible to safely switch TMC modes between StealthChop and SpreadCycle on the fly without encountering problems such as lost steps or unwanted vibrations near the switching speed. Therefore, if StealthChop is enabled during autotuning, it will be enforced at all speeds. For this reason, it's not recommended to enable it on X and Y axis as it can have a negative impact on performance since it also limit the maximum speeds that can be achieved.
+- Using autotuning for your motors can improve efficiency by allowing them to run cooler and consume less power. However, it's important to note that this process can also cause the TMC drivers to run hotter, so proper cooling measures must be implemented.
 
 
 ## Installation
