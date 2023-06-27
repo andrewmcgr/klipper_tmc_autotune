@@ -86,6 +86,7 @@ class AutotuneTMC:
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
+
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
@@ -146,7 +147,7 @@ class AutotuneTMC:
         self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
-        self._setup_highspeed(0.45 * vmaxpwm)
+        self._setup_highspeed(1.2 * vmaxpwm)
         self._set_driver_field('multistep_filt', True)
 
 
@@ -231,7 +232,7 @@ class AutotuneTMC:
         self._set_driver_field('pwm_autograd', True)
         self._set_driver_field('pwm_grad', pwmgrad)
         self._set_driver_field('pwm_ofs', pwmofs)
-        self._set_driver_field('pwm_reg', 8)
+        self._set_driver_field('pwm_reg', 15)
         self._set_driver_field('pwm_lim', 4)
         self._set_driver_field('en_pwm_mode', pwm_mode)
         if self.stealth_and_spread:
@@ -255,6 +256,7 @@ class AutotuneTMC:
         self._set_driver_field('semax', 4)
         self._set_driver_field('seup', 3)
         self._set_driver_field('sedn', 0)
+        # If we drop to 1/4 current, high accels don't work right.
         self._set_driver_field('seimin', 0)
         self._set_driver_field('sfilt', 0)
         self._set_driver_field('iholddelay', 12)
@@ -263,7 +265,8 @@ class AutotuneTMC:
     def _setup_highspeed(self, vhigh):
         self._set_driver_velocity_field('thigh', vhigh)
         self._set_driver_field('vhighfs', True)
-        self._set_driver_field('vhighchm', True)
+        # Even though we are fullstepping, we want SpreadCycle control.
+        self._set_driver_field('vhighchm', False)
 
 
 def load_config_prefix(config):
