@@ -218,7 +218,7 @@ class AutotuneTMC:
         self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
-        self._setup_highspeed(0.45 * vmaxpwm)
+        self._setup_highspeed(1.2 * vmaxpwm)
         self._set_driver_field('multistep_filt', True)
 
 def load_config_prefix(config):
