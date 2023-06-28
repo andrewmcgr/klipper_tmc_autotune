@@ -1,6 +1,48 @@
 import math, logging, os
 from . import tmc
 
+# Autotune config parameters
+STEALTH_AND_SPREAD = False
+EXTRA_HYSTERESIS = 0
+TBL = 2
+TOFF = 0
+SGT = 1
+SG4_THRS = 10
+VOLTAGE = 24.0
+OVERVOLTAGE_VTH = None
+
+# Generic tuning parameters
+COOLSTEP_THRS_FACTOR = 0.8
+FULLSTEP_THRS_FACTOR = 1.2
+MULTISTEP_FILT = True
+
+# PWM parameters
+PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
+                     # gives more data about the motor and is needed for CoolStep.
+PWM_AUTOGRAD = True
+PWM_REG = 15
+PWM_LIM = 4
+
+# SpreadCycle parameters
+TPFD = 3
+
+# CoolStep parameters
+FAST_STANDSTILL = True
+SMALL_HYSTERESIS = False
+SEMIN = 8
+SEMAX = 4
+SEUP = 3
+SEDN = 0
+SEIMIN = 0 # If we drop to 1/4 current, high accels don't work right
+SFILT = 0
+IHOLDDELAY = 12
+IRUNDELAY = 0
+
+# High speed parameters
+VHIGHFS = True
+VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
+
+
 TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
 
 class AutotuneTMC:
@@ -47,7 +89,8 @@ class AutotuneTMC:
                 "It is not part of the database, please define it in your config!"
                 % (self.motor_name))
         stealth = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
-        self.stealth_and_spread = config.getboolean('stealth_and_spread', default=False)
+        self.stealth_and_spread = config.getboolean('stealth_and_spread',
+                                                    default=STEALTH_AND_SPREAD)
         self.stealth = config.getboolean('stealth', default=stealth)
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
@@ -55,13 +98,14 @@ class AutotuneTMC:
         self.run_current = 0.0
         self.fclk = None
         self.motor_object = None
-        self.extra_hysteresis = config.getint('extra_hysteresis', default=0, minval=0, maxval=8)
-        self.tbl = config.getint('tbl', default=2, minval=0, maxval=3)
-        self.toff = config.getint('toff', default=0, minval=1, maxval=15)
-        self.sgt = config.getint('sgt', default=1, minval=-64, maxval=63)
-        self.sg4_thrs = config.getint('sg4_thrs', default=10, minval=0, maxval=255)
-        self.voltage = config.getfloat('voltage', default=24.0, minval=0.0, maxval=60.0)
-        self.overvoltage_vth = config.getfloat('overvoltage_vth', default=None,
+        self.extra_hysteresis = config.getint('extra_hysteresis', default=EXTRA_HYSTERESIS,
+                                              minval=0, maxval=8)
+        self.tbl = config.getint('tbl', default=TBL, minval=0, maxval=3)
+        self.toff = config.getint('toff', default=TOFF, minval=1, maxval=15)
+        self.sgt = config.getint('sgt', default=SGT, minval=-64, maxval=63)
+        self.sg4_thrs = config.getint('sg4_thrs', default=SG4_THRS, minval=0, maxval=255)
+        self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
+        self.overvoltage_vth = config.getfloat('overvoltage_vth', default=OVERVOLTAGE_VTH,
                                               minval=0.0, maxval=60.0)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
@@ -125,9 +169,8 @@ class AutotuneTMC:
             if overvoltage_vth >= 0.0 or overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
         self.tune_driver()
-    
+
     def tune_driver(self, print_time=None):
-        tmco = self.tmc_object
         self.run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
         self._set_hysteresis(self.run_current)
         self._set_pwmfreq()
@@ -141,14 +184,14 @@ class AutotuneTMC:
         if self.overvoltage_vth is not None:
             vth = int((self.overvoltage_vth / 0.009732))
             self._set_driver_field('overvoltage_vth', vth)
-        coolthrs = 0.8 * rdist
+        coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.stealth or self.stealth_and_spread,
                         self._pwmthrs(vmaxpwm, coolthrs))
         self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
-        self._setup_highspeed(1.2 * vmaxpwm)
-        self._set_driver_field('multistep_filt', True)
+        self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
+        self._set_driver_field('multistep_filt', MULTISTEP_FILT)
 
 
     def _set_driver_field(self, field, arg):
@@ -172,7 +215,7 @@ class AutotuneTMC:
         arg = tmc.TMCtstepHelper(step_dist, mres, self.fclk, velocity)
         logging.info("autotune_tmc set %s %s=%s(%s)",
                      self.name, field, repr(arg), repr(velocity))
-        val = tmco.fields.set_field(field, arg)
+        tmco.fields.set_field(field, arg)
 
     def _set_pwmfreq(self):
         # calculate the highest pwm_freq that gives less than 50 kHz chopping
@@ -213,27 +256,25 @@ class AutotuneTMC:
         if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
             # we have SG4
             # 2240 doesn't care about pwmthrs vs coolthrs ordering, but this is desirable
-            return max(0.2 * vmaxpwm, 1.125*coolthrs)
+            return max(0.2 * vmaxpwm, 1.125 * coolthrs)
         elif self.tmc_object.fields.lookup_register("sgthrs", None) is not None:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
-            return max(0.2 * vmaxpwm, 1.125*coolthrs)
+            return max(0.2 * vmaxpwm, 1.125 * coolthrs)
         else:
             # We do not have SG4, so this makes the world safe for
             # sensorless homing in the presence of CoolStep
-            return 0.5*coolthrs
+            return 0.5 * coolthrs
 
     def _setup_pwm(self, pwm_mode, pwmthrs):
-        # Setup pwm autoscale even if we won't use PWM, because it
-        # gives more data about the motor and is needed for CoolStep.
         motor = self.motor_object
         pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=self.fclk)
         pwmofs = motor.pwmofs(volts=self.voltage, current=self.run_current)
-        self._set_driver_field('pwm_autoscale', True)
-        self._set_driver_field('pwm_autograd', True)
+        self._set_driver_field('pwm_autoscale', PWM_AUTOSCALE)
+        self._set_driver_field('pwm_autograd', PWM_AUTOGRAD)
         self._set_driver_field('pwm_grad', pwmgrad)
         self._set_driver_field('pwm_ofs', pwmofs)
-        self._set_driver_field('pwm_reg', 15)
-        self._set_driver_field('pwm_lim', 4)
+        self._set_driver_field('pwm_reg', PWM_REG)
+        self._set_driver_field('pwm_lim', PWM_LIM)
         self._set_driver_field('en_pwm_mode', pwm_mode)
         if self.stealth_and_spread:
             self._set_driver_velocity_field('tpwmthrs', pwmthrs)
@@ -243,30 +284,28 @@ class AutotuneTMC:
             self._set_driver_field('tpwmthrs', 0xfffff)
 
     def _setup_spreadcycle(self):
-        self._set_driver_field('tpfd', 3)
+        self._set_driver_field('tpfd', TPFD)
         self._set_driver_field('tbl', self.tbl)
         self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.85e-5 * self.fclk - 12)/32)))
 
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field('tcoolthrs', coolthrs)
         self._set_driver_field('sgt', self.sgt)
-        self._set_driver_field('fast_standstill', True)
-        self._set_driver_field('small_hysteresis', False)
-        self._set_driver_field('semin', 8)
-        self._set_driver_field('semax', 4)
-        self._set_driver_field('seup', 3)
-        self._set_driver_field('sedn', 0)
-        # If we drop to 1/4 current, high accels don't work right.
-        self._set_driver_field('seimin', 0)
-        self._set_driver_field('sfilt', 0)
-        self._set_driver_field('iholddelay', 12)
-        self._set_driver_field('irundelay', 0)
+        self._set_driver_field('fast_standstill', FAST_STANDSTILL)
+        self._set_driver_field('small_hysteresis', SMALL_HYSTERESIS)
+        self._set_driver_field('semin', SEMIN)
+        self._set_driver_field('semax', SEMAX)
+        self._set_driver_field('seup', SEUP)
+        self._set_driver_field('sedn', SEDN)
+        self._set_driver_field('seimin', SEIMIN)
+        self._set_driver_field('sfilt', SFILT)
+        self._set_driver_field('iholddelay', IHOLDDELAY)
+        self._set_driver_field('irundelay', IRUNDELAY)
 
     def _setup_highspeed(self, vhigh):
         self._set_driver_velocity_field('thigh', vhigh)
-        self._set_driver_field('vhighfs', True)
-        # Even though we are fullstepping, we want SpreadCycle control.
-        self._set_driver_field('vhighchm', False)
+        self._set_driver_field('vhighfs', VHIGHFS)
+        self._set_driver_field('vhighchm', VHIGHCHM)
 
 
 def load_config_prefix(config):
