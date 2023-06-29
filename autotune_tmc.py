@@ -1,7 +1,14 @@
 import math, logging, os
+from enum import Enum
 from . import tmc
 
 TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
+
+class TuningGoal(str, Enum):
+    AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
+    AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
+    SILENT = "silent" # StealthChop at all speeds
+    PERFORMANCE = "performance" # SpreadCycle at all speeds
 
 class AutotuneTMC:
     def __init__(self, config):
@@ -46,9 +53,16 @@ class AutotuneTMC:
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
                 "It is not part of the database, please define it in your config!"
                 % (self.motor_name))
-        stealth = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
-        self.stealth_and_spread = config.getboolean('stealth_and_spread', default=False)
-        self.stealth = config.getboolean('stealth', default=stealth)
+        tgoal = config.get('tuning_goal', default='auto').lower()
+        try:
+            self.tuning_goal = TuningGoal(tgoal)
+        except ValueError:
+            raise config.error(
+                "Tuning goal '%s' is invalid for TMC autotuning"
+                % (tgoal))
+        if self.tuning_goal == TuningGoal.AUTO:
+            auto_silent = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+            self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
@@ -90,12 +104,15 @@ class AutotuneTMC:
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
-        stealth_and_spread = gcmd.get_int('STEALTH_AND_SPREAD', None)
-        if stealth_and_spread is not None:
-            self.stealth_and_spread = True if stealth_and_spread == 1 else False
-        stealth = gcmd.get_int('STEALTH', None)
-        if stealth is not None:
-            self.stealth = True if stealth == 1 else False
+        tgoal = gcmd.get('TUNING_GOAL', None).lower()
+        if tgoal is not None:
+            try:
+                self.tuning_goal = TuningGoal(tgoal)
+            except ValueError:
+                pass
+            if self.tuning_goal == TuningGoal.AUTO:
+                auto_silent = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+                self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
         extra_hysteresis = gcmd.get_int('EXTRA_HYSTERESIS', None)
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 or extra_hysteresis <= 8:
@@ -142,8 +159,7 @@ class AutotuneTMC:
             vth = int((self.overvoltage_vth / 0.009732))
             self._set_driver_field('overvoltage_vth', vth)
         coolthrs = 0.8 * rdist
-        self._setup_pwm(self.stealth or self.stealth_and_spread,
-                        self._pwmthrs(vmaxpwm, coolthrs))
+        self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
         self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
@@ -222,7 +238,7 @@ class AutotuneTMC:
             # sensorless homing in the presence of CoolStep
             return 0.5*coolthrs
 
-    def _setup_pwm(self, pwm_mode, pwmthrs):
+    def _setup_pwm(self, tgoal, pwmthrs):
         # Setup pwm autoscale even if we won't use PWM, because it
         # gives more data about the motor and is needed for CoolStep.
         motor = self.motor_object
@@ -234,13 +250,18 @@ class AutotuneTMC:
         self._set_driver_field('pwm_ofs', pwmofs)
         self._set_driver_field('pwm_reg', 15)
         self._set_driver_field('pwm_lim', 4)
-        self._set_driver_field('en_pwm_mode', pwm_mode)
-        if self.stealth_and_spread:
+        if tgoal == TuningGoal.AUTOSWITCH:
             self._set_driver_velocity_field('tpwmthrs', pwmthrs)
-        if self.stealth:
+            self._set_driver_field('en_pwm_mode', True)
+            self._set_driver_field('en_spreadcycle', False) # TMC2208 use en_spreadcycle instead of en_pwm_mode
+        elif tgoal == TuningGoal.SILENT:
             self._set_driver_field('tpwmthrs', 0)
-        else:
+            self._set_driver_field('en_pwm_mode', True)
+            self._set_driver_field('en_spreadcycle', False) # TMC2208 use en_spreadcycle instead of en_pwm_mode
+        elif tgoal == TuningGoal.PERFORMANCE:
             self._set_driver_field('tpwmthrs', 0xfffff)
+            self._set_driver_field('en_pwm_mode', False)
+            self._set_driver_field('en_spreadcycle', True) # TMC2208 use en_spreadcycle instead of en_pwm_mode
 
     def _setup_spreadcycle(self):
         self._set_driver_field('tpfd', 3)
