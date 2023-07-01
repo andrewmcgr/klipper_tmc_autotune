@@ -2,17 +2,16 @@
 
 Klipper extension for automatic configuration and tuning of TMC drivers.
 
-This extension calculates good values for most registers of TMC stepper motor drivers, given the motor's datasheet information.
+This extension calculates good values for most registers of TMC stepper motor drivers, given the motor's datasheet information and user selected tuning goal.
 
 In particular, it enables StealthChop by default on Z motors and extruders, CoolStep where possible, and correctly switches to full step operation at very high speeds. Where multiple modes are possible, it should select the lowest power and quietest modes available, subject to the constraints of sensorless homing (which does not allow certain combinations).
 
 
 ### Current status
 
-- Support for TMC2209, TMC2240, and TMC5160 at least partially tested.
+- Official support for TMC2209, TMC2240, and TMC5160.
 - Support for TMC2130, TMC2208 and TMC2660 may work, but is completely untested.
 - Sensorless homing with autotuning enabled is known to work on TMC2209, TMC2240 and TMC5160, provided you home fast enough (homing_speed should be numerically greater than rotation_distance for those axes using sensorless homing). As always, be very careful when trying sensorless homing for the first time.
-- Due to the limitations of Klipper's current design, it is not possible to safely switch TMC modes between StealthChop and SpreadCycle on the fly without encountering problems such as lost steps or unwanted vibrations near the switching speed. Therefore, if StealthChop is enabled during autotuning, it will be enforced at all speeds. For this reason, it's not recommended to enable it on X and Y axis as it can have a negative impact on performance since it also limit the maximum speeds that can be achieved.
 - Using autotuning for your motors can improve efficiency by allowing them to run cooler and consume less power. However, it's important to note that this process can also cause the TMC drivers to run hotter, so proper cooling measures must be implemented.
 
 
@@ -64,7 +63,7 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | Parameter | Default value | Range | Description |
 | --- | --- | --- | --- |
 | motor |  | [See DB](motor_database.cfg) | This parameter is used to retrieve the physical constants of the motor connected to the TMC driver |
-| stealth | False (for X/Y TMCs)<br>True (for the others) | True / False | Enable the use of StealthChop for this driver at the automatically calculated appropriate speed range |
+| tuning_goal | `auto` | `auto`, `silent`, `performance`, and `autoswitch` | Parameter to choose how to fine-tune the TMC driver using StealthChop and tailored parameters. By opting for `auto`, it will automatically apply `performance` for the X and Y axes and `silent` for the Z axis and extruder. `autoswitch` is an highly experimental choice that enables dynamic switching between `silent` and `performance` modes in real-time when needed. However, at the moment, this transition can potentially be troublesome, resulting in unwanted behavior, noise disturbances and lost steps. Hence, it is recommended to avoid using 'autoswitch' until its identified issues are fully addressed |
 | extra_hysteresis | 0 | 0 to 8 | Additional hysteresis to reduce motor humming and vibration at low to medium speeds and maintain proper microstep accuracy. Warning: use only as much as necessary as a too high value will result in more chopper noise and motor power dissipation (ie. more heat) |
 | tbl | 2 | 0 to 3 | Comparator blank time. This time must safely cover the TMC switching events. A value of 1 or 2 (default) should be fine for most typical applications, but higher capacitive loads may require this to be set to 3. Also, lower values allow StealthChop to regulate to lower coil current values |
 | toff | 0 | 0 to 15 | Sets the slow decay time (off time) of the chopper cycle. This setting also limits the maximum chopper frequency. When set to 0, the value is automatically computed by this autotuning algorithm. Highest motor velocities sometimes benefit from forcing `toff` to 1 or 2 and a setting a short `tbl` of 1 or 0 |
