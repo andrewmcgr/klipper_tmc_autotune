@@ -5,7 +5,7 @@ from . import tmc
 # Autotune config parameters
 TUNING_GOAL = 'auto'
 EXTRA_HYSTERESIS = 0
-TBL = 2
+TBL = 1
 TOFF = 0
 SGT = 1
 SG4_THRS = 10
@@ -25,7 +25,7 @@ PWM_REG = 15
 PWM_LIM = 4
 
 # SpreadCycle parameters
-TPFD = 3
+TPFD = 0
 
 # CoolStep parameters
 FAST_STANDSTILL = True
