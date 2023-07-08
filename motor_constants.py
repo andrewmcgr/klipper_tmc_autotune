@@ -36,7 +36,7 @@ class MotorConstants:
         dcoilblank = volts * tblank / self.L
         dcoilsd = self.R * I * 2.0 * tsd / self.L
         hysteresis = extra + int(math.ceil(max(0.5 + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / I) / 32 - 8, -2)))
-        htotal = min(hysteresis, 16)
+        htotal = min(hysteresis, 14)
         hstrt = max(min(htotal, 8), 1)
         hend = min(htotal - hstrt, 12)
         return hstrt - 1, hend + 3
