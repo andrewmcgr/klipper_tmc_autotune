@@ -147,7 +147,7 @@ class AutotuneTMC:
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
-        tgoal = gcmd.get('TUNING_GOAL', None).lower()
+        tgoal = gcmd.get('TUNING_GOAL', TUNING_GOAL).lower()
         if tgoal is not None:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
