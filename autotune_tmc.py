@@ -46,6 +46,8 @@ VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
 
 TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
 
+AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
+
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
     AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
@@ -103,7 +105,7 @@ class AutotuneTMC:
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
         if self.tuning_goal == TuningGoal.AUTO:
-            auto_silent = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+            auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS
             self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
@@ -155,7 +157,7 @@ class AutotuneTMC:
                 # TODO: add some logging/error here in case the tuning_goal doesn't exist
                 pass
             if self.tuning_goal == TuningGoal.AUTO:
-                auto_silent = not self.name in {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1'}
+                auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS
                 self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
         extra_hysteresis = gcmd.get_int('EXTRA_HYSTERESIS', None)
         if extra_hysteresis is not None:
