@@ -75,7 +75,7 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
   > Note:
   >
   > This autotuning extension can be used together with homing overrides for sensorless homing. However, remember to adjust the `sg4_thrs` and/or `sgt` values specifically in the autotune sections. Attempting to make these changes via gcode will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
-  > Also check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1` not `diag0`. There may be other unusual drivers.
+  > Also, check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1_pin` not `diag0_pin`, but MKS TMC 2240 stepsticks require `diag0_pin` and *not* `diag1_pin`. There may be other unusual drivers.
 
 Also if needed, you can adjust everything on the go when the printer is running by using the `AUTOTUNE_TMC` macro in the Klipper console. All previous parameters are available:
 ```
