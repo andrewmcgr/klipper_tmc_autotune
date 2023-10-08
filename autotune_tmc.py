@@ -91,7 +91,7 @@ class AutotuneTMC:
         self.motor = config.get('motor')
         self.motor_name = "motor_constants " + self.motor
         try:
-            self.printer.lookup_object(self.motor_name)
+            motor = self.printer.lookup_object(self.motor_name)
         except Exception:
             raise config.error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
@@ -105,8 +105,9 @@ class AutotuneTMC:
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
         if self.tuning_goal == TuningGoal.AUTO:
-            auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS
-            self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
+            # Very small motors may not run in silent mode.
+            self.auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
+            self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
@@ -157,8 +158,7 @@ class AutotuneTMC:
                 # TODO: add some logging/error here in case the tuning_goal doesn't exist
                 pass
             if self.tuning_goal == TuningGoal.AUTO:
-                auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS
-                self.tuning_goal = TuningGoal.SILENT if auto_silent else TuningGoal.PERFORMANCE
+                self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         extra_hysteresis = gcmd.get_int('EXTRA_HYSTERESIS', None)
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 or extra_hysteresis <= 8:
