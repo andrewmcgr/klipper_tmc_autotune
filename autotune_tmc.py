@@ -190,7 +190,8 @@ class AutotuneTMC:
         self.tune_driver()
 
     def tune_driver(self, print_time=None):
-        self.run_current, _, _, _ = self.tmc_cmdhelper.current_helper.get_current()
+        _currents = self.tmc_cmdhelper.current_helper.get_current()
+        self.run_current = _currents[0]
         self._set_hysteresis(self.run_current)
         self._set_pwmfreq()
         self._set_sg4thrs()
