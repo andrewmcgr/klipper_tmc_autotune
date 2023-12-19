@@ -40,7 +40,7 @@ IHOLDDELAY = 12
 IRUNDELAY = 0
 
 # High speed parameters
-VHIGHFS = True
+VHIGHFS = False
 VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
 
 
