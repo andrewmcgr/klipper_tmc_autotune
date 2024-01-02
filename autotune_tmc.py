@@ -104,9 +104,10 @@ class AutotuneTMC:
             raise config.error(
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
+        self.auto_silent = False # Auto silent off by default
         if self.tuning_goal == TuningGoal.AUTO:
             # Very small motors may not run in silent mode.
-            self.auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
+            self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
             self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
