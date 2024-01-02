@@ -25,7 +25,7 @@ PWM_REG = 15
 PWM_LIM = 4
 
 # SpreadCycle parameters
-TPFD = 2
+TPFD = 0
 
 # CoolStep parameters
 FAST_STANDSTILL = True
