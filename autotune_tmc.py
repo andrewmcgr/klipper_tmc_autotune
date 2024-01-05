@@ -88,7 +88,7 @@ class AutotuneTMC:
                 % (self.name))
 
         # AutotuneTMC config parameters
-        self.motor = config.get('motor').lower()
+        self.motor = config.get('motor')
         self.motor_name = "motor_constants " + self.motor
         try:
             motor = self.printer.lookup_object(self.motor_name)
