@@ -88,15 +88,8 @@ class AutotuneTMC:
                 % (self.name))
 
         # AutotuneTMC config parameters
-        self.motor = config.get('motor').lower()
+        self.motor = config.get('motor')
         self.motor_name = "motor_constants " + self.motor
-        try:
-            motor = self.printer.lookup_object(self.motor_name)
-        except Exception:
-            raise config.error(
-                "Could not find motor definition '[%s]' required by TMC autotuning. "
-                "It is not part of the database, please define it in your config!"
-                % (self.motor_name))
         tgoal = config.get('tuning_goal', default=TUNING_GOAL).lower()
         try:
             self.tuning_goal = TuningGoal(tgoal)
@@ -105,10 +98,6 @@ class AutotuneTMC:
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
         self.auto_silent = False # Auto silent off by default
-        if self.tuning_goal == TuningGoal.AUTO:
-            # Very small motors may not run in silent mode.
-            self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
-            self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
@@ -138,6 +127,17 @@ class AutotuneTMC:
         self.tmc_object = self.printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
+        try:
+            motor = self.printer.lookup_object(self.motor_name)
+        except Exception:
+            raise self.printer.config_error(
+                "Could not find motor definition '[%s]' required by TMC autotuning. "
+                "It is not part of the database, please define it in your config!"
+                % (self.motor_name))
+        if self.tuning_goal == TuningGoal.AUTO:
+            # Very small motors may not run in silent mode.
+            self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
+            self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.motor_object = self.printer.lookup_object(self.motor_name)
         #self.tune_driver()
     def handle_ready(self):

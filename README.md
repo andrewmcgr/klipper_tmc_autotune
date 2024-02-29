@@ -38,7 +38,7 @@ install_script: install.sh
 
 ## Main configuration
 
-Add the following to your `printer.cfg` (remove or add any sections as needed) to enable the autotuning for your TMC drivers and motors and restart Klipper:
+Add the following to your `printer.cfg` (change motor names and remove or add any sections as needed) to enable the autotuning for your TMC drivers and motors and restart Klipper:
 ```ini
 [autotune_tmc stepper_x]
 motor: ldo-42sth48-2004mah
