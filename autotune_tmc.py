@@ -23,6 +23,7 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
+PWM_FREQ_TARGET = 55e3 # Default to 55 kHz
 
 # SpreadCycle parameters
 TPFD = 0
@@ -113,6 +114,8 @@ class AutotuneTMC:
         self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
         self.overvoltage_vth = config.getfloat('overvoltage_vth', default=OVERVOLTAGE_VTH,
                                               minval=0.0, maxval=60.0)
+        self.pwm_freq_target = config.getfloat('pwm_freq_target', default=PWM_FREQ_TARGET,
+                                               minval=10e3, maxval=100e3)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
         self.printer.register_event_handler("klippy:ready",
@@ -246,7 +249,7 @@ class AutotuneTMC:
                                    (0, 2./1024),
                                    (0, 0.) # Default case, just do the best we can.
                                    ]
-                         if self.fclk*i[1] < 55e3))[0]
+                         if self.fclk*i[1] < self.pwm_freq_target))[0]
         self._set_driver_field('pwm_freq', pwm_freq)
 
     def _set_hysteresis(self, run_current):
