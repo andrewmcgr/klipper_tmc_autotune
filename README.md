@@ -35,8 +35,16 @@ primary_branch: main
 install_script: install.sh
 ```
 
+## Adjusting existing configuration
 
-## Main configuration
+Your driver configurations should contain:
+* Pins
+* Currents (run current, hold current, homing current if using a Klipper version that supports the latter)
+* `interpolate: true`
+
+The Klipper documentation recommends not using interpolation. However, that is most applicable if using low microstep counts, and using the default driver configuration. Autotune gives better results, both dimensionally and quality, by using interpolation and as many microsteps as feasible.
+
+## Autotune configuration
 
 Add the following to your `printer.cfg` (change motor names and remove or add any sections as needed) to enable the autotuning for your TMC drivers and motors and restart Klipper:
 ```ini
@@ -69,6 +77,7 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | toff | 0 | 0 to 15 | Sets the slow decay time (off time) of the chopper cycle. This setting also limits the maximum chopper frequency. When set to 0, the value is automatically computed by this autotuning algorithm. Highest motor velocities sometimes benefit from forcing `toff` to 1 or 2 and a setting a short `tbl` of 1 or 0 |
 | sgt | 1 | -64 to 63 | Sensorless homing threshold for TMC5160, TMC2240, TMC2130, TMC2660. Set value appropriately if using sensorless homing (lower value means more sensitive detection and easier stall) |
 | sg4_thrs | 10 | 0 to 255 | Sensorless homing threshold for TMC2209 and TMC2260. Set value appropriately if using sensorless homing (higher value means more sensitive detection and easier stall). This parameter is also used as the CoolStep current regulation threshold for TMC2209, TMC2240 and TMC5160. A default value of 80 is usually a good starting point for CoolStep (in the case of TMC2209, the tuned sensorless homing value will also work correctly) |
+| pwm_freq_target | 55e3 | 10e3 to 60e3 | Switching frequency target, in Hz. The code selects the highest available PWM switching frequency less than or equal to this. The default usually results in 48 kHz switching. |
 | voltage | 24 | 0.0 to 60.0 | Voltage used to power this motor and stepper driver |
 | overvoltage_vth |  | 0.0 to 60.0 | Set the optional overvoltage snubber built into the TMC2240 and TMC5160. Users of the BTT SB2240 toolhead board should use it for the extruder by reading the actual toolhead voltage and adding 0.8V |
 
