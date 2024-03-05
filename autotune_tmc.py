@@ -23,7 +23,7 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
-PWM_FREQ_TARGET = 55e3 # Default to 55 kHz
+PWM_FREQ_TARGET = 25e3 # Default to 25 kHz
 
 # SpreadCycle parameters
 TPFD = 0
