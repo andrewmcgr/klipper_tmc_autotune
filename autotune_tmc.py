@@ -334,7 +334,8 @@ class AutotuneTMC:
             self.tbl = TBL
 
         pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
-        self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
+        if self.tpfd is None:
+            self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
 
         logging.info("autotune_tmc %s ncycles=%d pfdcycles=%d", self.name, ncycles, pfdcycles)
 
