@@ -324,7 +324,7 @@ class AutotuneTMC:
         sdcycles = ncycles / 4
         if self.toff == 0 or self.toff is None:
             # About half the cycle should be taken by the two slow decay cycles
-            self.toff = max(min(min(sdcycles - 24, 0) / 32, 15), 1)
+            self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
 
         if self.toff == 1 and self.tbl == 0:
             # blank time of 16 cycles will not work in this case
