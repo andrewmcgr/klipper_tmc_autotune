@@ -108,7 +108,8 @@ class AutotuneTMC:
         self.extra_hysteresis = config.getint('extra_hysteresis', default=EXTRA_HYSTERESIS,
                                               minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=TBL, minval=0, maxval=3)
-        self.toff = config.getint('toff', default=TOFF, minval=1, maxval=15)
+        self.toff = config.getint('toff', default=None, minval=1, maxval=15)
+        self.tpfd = config.getint('tpfd', default=None, minval=0, maxval=15)
         self.sgt = config.getint('sgt', default=SGT, minval=-64, maxval=63)
         self.sg4_thrs = config.getint('sg4_thrs', default=SG4_THRS, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
@@ -146,7 +147,10 @@ class AutotuneTMC:
     def handle_ready(self):
         if self.tmc_init_registers is not None:
             self.tmc_init_registers(print_time=print_time)
-        self.fclk = self.tmc_object.mcu_tmc.get_tmc_frequency()
+        try:
+            self.fclk = self.tmc_object.mcu_tmc.get_tmc_frequency()
+        except AttributeError:
+            pass
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
@@ -175,6 +179,10 @@ class AutotuneTMC:
         if toff is not None:
             if toff >= 1 or toff <= 15:
                 self.toff = toff
+        tpfd = gcmd.get_int('TPFD', None)
+        if tpfd is not None:
+            if tpfd >= 0 or tpfd <= 15:
+                self.tpfd = tpfd
         sgt = gcmd.get_int('SGT', None)
         if sgt is not None:
             if sgt >= -64 or sgt <= 63:
@@ -196,9 +204,9 @@ class AutotuneTMC:
     def tune_driver(self, print_time=None):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
-        self._set_hysteresis(self.run_current)
         self._set_pwmfreq()
-        self._set_toff()
+        self._setup_spreadcycle()
+        self._set_hysteresis(self.run_current)
         self._set_sg4thrs()
         motor = self.motor_object
         maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
@@ -211,7 +219,6 @@ class AutotuneTMC:
             self._set_driver_field('overvoltage_vth', vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
-        self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
         self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
@@ -252,10 +259,6 @@ class AutotuneTMC:
                                    ]
                          if self.fclk*i[1] < self.pwm_freq_target))[0]
         self._set_driver_field('pwm_freq', pwm_freq)
-
-    def _set_toff(self):
-        if self.toff == 0:
-            self.toff = int(math.ceil((1.0 / (4.0 * self.pwm_freq_target) * self.fclk - 12)/32))
 
     def _set_hysteresis(self, run_current):
         hstrt, hend = self.motor_object.hysteresis(
@@ -317,7 +320,25 @@ class AutotuneTMC:
             self._set_driver_field('en_spreadcycle', True) # TMC2208 use en_spreadcycle instead of en_pwm_mode
 
     def _setup_spreadcycle(self):
-        self._set_driver_field('tpfd', TPFD)
+        ncycles = int(math.ceil(self.fclk / self.pwm_freq_target))
+        sdcycles = ncycles / 4
+        if self.toff == 0 or self.toff is None:
+            # About half the cycle should be taken by the two slow decay cycles
+            self.toff = max(min(min(sdcycles - 24, 0) / 32, 15), 1)
+
+        if self.toff == 1 and self.tbl == 0:
+            # blank time of 16 cycles will not work in this case
+            self.tbl = 1
+
+        if self.tbl is None:
+            self.tbl = TBL
+
+        pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
+        self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
+
+        logging.info("autotune_tmc %s ncycles=%d pfdcycles=%d", self.name, ncycles, pfdcycles)
+
+        self._set_driver_field('tpfd', self.tpfd)
         self._set_driver_field('tbl', self.tbl)
         self._set_driver_field('toff', self.toff)
 
