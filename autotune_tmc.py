@@ -8,12 +8,12 @@ EXTRA_HYSTERESIS = 0
 TBL = 1
 TOFF = 0
 SGT = 1
-SG4_THRS = 10
+SG4_THRS = 40
 VOLTAGE = 24.0
 OVERVOLTAGE_VTH = None
 
 # Generic tuning parameters
-COOLSTEP_THRS_FACTOR = 0.8
+COOLSTEP_THRS_FACTOR = 0.6
 FULLSTEP_THRS_FACTOR = 1.2
 MULTISTEP_FILT = True
 
@@ -23,6 +23,7 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
+PWM_FREQ_TARGET = 25e3 # Default to 25 kHz
 
 # SpreadCycle parameters
 TPFD = 0
@@ -30,17 +31,17 @@ TPFD = 0
 # CoolStep parameters
 FAST_STANDSTILL = True
 SMALL_HYSTERESIS = False
-SEMIN = 8
-SEMAX = 4
+SEMIN = 2
+SEMAX = 2
 SEUP = 3
-SEDN = 0
+SEDN = 2
 SEIMIN = 0 # If we drop to 1/4 current, high accels don't work right
 SFILT = 0
 IHOLDDELAY = 12
 IRUNDELAY = 0
 
 # High speed parameters
-VHIGHFS = True
+VHIGHFS = False
 VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
 
 
@@ -90,13 +91,6 @@ class AutotuneTMC:
         # AutotuneTMC config parameters
         self.motor = config.get('motor')
         self.motor_name = "motor_constants " + self.motor
-        try:
-            motor = self.printer.lookup_object(self.motor_name)
-        except Exception:
-            raise config.error(
-                "Could not find motor definition '[%s]' required by TMC autotuning. "
-                "It is not part of the database, please define it in your config!"
-                % (self.motor_name))
         tgoal = config.get('tuning_goal', default=TUNING_GOAL).lower()
         try:
             self.tuning_goal = TuningGoal(tgoal)
@@ -104,10 +98,7 @@ class AutotuneTMC:
             raise config.error(
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
-        if self.tuning_goal == TuningGoal.AUTO:
-            # Very small motors may not run in silent mode.
-            self.auto_silent = not self.name in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
-            self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
+        self.auto_silent = False # Auto silent off by default
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
         self.tmc_init_registers=None # Ditto
@@ -117,12 +108,15 @@ class AutotuneTMC:
         self.extra_hysteresis = config.getint('extra_hysteresis', default=EXTRA_HYSTERESIS,
                                               minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=TBL, minval=0, maxval=3)
-        self.toff = config.getint('toff', default=TOFF, minval=1, maxval=15)
+        self.toff = config.getint('toff', default=None, minval=1, maxval=15)
+        self.tpfd = config.getint('tpfd', default=None, minval=0, maxval=15)
         self.sgt = config.getint('sgt', default=SGT, minval=-64, maxval=63)
         self.sg4_thrs = config.getint('sg4_thrs', default=SG4_THRS, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
         self.overvoltage_vth = config.getfloat('overvoltage_vth', default=OVERVOLTAGE_VTH,
                                               minval=0.0, maxval=60.0)
+        self.pwm_freq_target = config.getfloat('pwm_freq_target', default=PWM_FREQ_TARGET,
+                                               minval=10e3, maxval=100e3)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
         self.printer.register_event_handler("klippy:ready",
@@ -137,12 +131,26 @@ class AutotuneTMC:
         self.tmc_object = self.printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
+        try:
+            motor = self.printer.lookup_object(self.motor_name)
+        except Exception:
+            raise self.printer.config_error(
+                "Could not find motor definition '[%s]' required by TMC autotuning. "
+                "It is not part of the database, please define it in your config!"
+                % (self.motor_name))
+        if self.tuning_goal == TuningGoal.AUTO:
+            # Very small motors may not run in silent mode.
+            self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
+            self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.motor_object = self.printer.lookup_object(self.motor_name)
         #self.tune_driver()
     def handle_ready(self):
         if self.tmc_init_registers is not None:
             self.tmc_init_registers(print_time=print_time)
-        self.fclk = self.tmc_object.mcu_tmc.get_tmc_frequency()
+        try:
+            self.fclk = self.tmc_object.mcu_tmc.get_tmc_frequency()
+        except AttributeError:
+            pass
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
@@ -171,6 +179,10 @@ class AutotuneTMC:
         if toff is not None:
             if toff >= 1 or toff <= 15:
                 self.toff = toff
+        tpfd = gcmd.get_int('TPFD', None)
+        if tpfd is not None:
+            if tpfd >= 0 or tpfd <= 15:
+                self.tpfd = tpfd
         sgt = gcmd.get_int('SGT', None)
         if sgt is not None:
             if sgt >= -64 or sgt <= 63:
@@ -192,8 +204,9 @@ class AutotuneTMC:
     def tune_driver(self, print_time=None):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
-        self._set_hysteresis(self.run_current)
         self._set_pwmfreq()
+        self._setup_spreadcycle()
+        self._set_hysteresis(self.run_current)
         self._set_sg4thrs()
         motor = self.motor_object
         maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
@@ -206,7 +219,6 @@ class AutotuneTMC:
             self._set_driver_field('overvoltage_vth', vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
-        self._setup_spreadcycle()
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
         self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
@@ -245,7 +257,7 @@ class AutotuneTMC:
                                    (0, 2./1024),
                                    (0, 0.) # Default case, just do the best we can.
                                    ]
-                         if self.fclk*i[1] < 55e3))[0]
+                         if self.fclk*i[1] < self.pwm_freq_target))[0]
         self._set_driver_field('pwm_freq', pwm_freq)
 
     def _set_hysteresis(self, run_current):
@@ -308,9 +320,28 @@ class AutotuneTMC:
             self._set_driver_field('en_spreadcycle', True) # TMC2208 use en_spreadcycle instead of en_pwm_mode
 
     def _setup_spreadcycle(self):
-        self._set_driver_field('tpfd', TPFD)
+        ncycles = int(math.ceil(self.fclk / self.pwm_freq_target))
+        sdcycles = ncycles / 4
+        if self.toff == 0 or self.toff is None:
+            # About half the cycle should be taken by the two slow decay cycles
+            self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
+
+        if self.toff == 1 and self.tbl == 0:
+            # blank time of 16 cycles will not work in this case
+            self.tbl = 1
+
+        if self.tbl is None:
+            self.tbl = TBL
+
+        pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
+        if self.tpfd is None:
+            self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
+
+        logging.info("autotune_tmc %s ncycles=%d pfdcycles=%d", self.name, ncycles, pfdcycles)
+
+        self._set_driver_field('tpfd', self.tpfd)
         self._set_driver_field('tbl', self.tbl)
-        self._set_driver_field('toff', self.toff if self.toff > 0 else int(math.ceil((0.85e-5 * self.fclk - 12)/32)))
+        self._set_driver_field('toff', self.toff)
 
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field('tcoolthrs', coolthrs)
