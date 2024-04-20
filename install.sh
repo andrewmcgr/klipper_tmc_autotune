@@ -1,18 +1,13 @@
 #!/bin/bash
 
-KLIPPER_PATH="${HOME}/klipper"
-AUTOTUNETMC_PATH="${HOME}/klipper_tmc_autotune"
+KLIPPER_PATH="/usr/share/klipper"
+AUTOTUNETMC_PATH="/usr/data/klipper_tmc_autotune"
 
 set -eu
 export LC_ALL=C
 
 
 function preflight_checks {
-    if [ "$EUID" -eq 0 ]; then
-        echo "[PRE-CHECK] This script must not be run as root!"
-        exit -1
-    fi
-
     if [ "$(sudo systemctl list-units --full -all -t service --no-legend | grep -F 'klipper.service')" ]; then
         printf "[PRE-CHECK] Klipper service found! Continuing...\n\n"
     else
@@ -28,7 +23,7 @@ function check_download {
 
     if [ ! -d "${AUTOTUNETMC_PATH}" ]; then
         echo "[DOWNLOAD] Downloading Autotune TMC repository..."
-        if git -C $autotunedirname clone https://github.com/andrewmcgr/klipper_tmc_autotune.git $autotunebasename; then
+        if git -C $autotunedirname clone https://github.com/evgarthub/klipper_tmc_autotune_k1.git $autotunebasename; then
             chmod +x ${AUTOTUNETMC_PATH}/install.sh
             printf "[DOWNLOAD] Download complete!\n\n"
         else
