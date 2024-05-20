@@ -23,7 +23,7 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
-PWM_FREQ_TARGET = 25e3 # Default to 25 kHz
+PWM_FREQ_TARGET = 55e3 # Default to 55 kHz
 
 # SpreadCycle parameters
 TPFD = 0
@@ -326,12 +326,12 @@ class AutotuneTMC:
             # About half the cycle should be taken by the two slow decay cycles
             self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
 
+        if self.tbl is None:
+            self.tbl = TBL
+
         if self.toff == 1 and self.tbl == 0:
             # blank time of 16 cycles will not work in this case
             self.tbl = 1
-
-        if self.tbl is None:
-            self.tbl = TBL
 
         pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
         if self.tpfd is None:
