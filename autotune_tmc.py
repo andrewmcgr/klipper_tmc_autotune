@@ -1,5 +1,6 @@
 import math, logging, os
 from enum import Enum
+from inspect import signature
 from . import tmc
 
 # Autotune config parameters
@@ -23,7 +24,7 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
-PWM_FREQ_TARGET = 25e3 # Default to 25 kHz
+PWM_FREQ_TARGET = 55e3 # Default to 55 kHz
 
 # SpreadCycle parameters
 TPFD = 0
@@ -32,10 +33,10 @@ TPFD = 0
 FAST_STANDSTILL = True
 SMALL_HYSTERESIS = False
 SEMIN = 2
-SEMAX = 2
+SEMAX = 4
 SEUP = 3
 SEDN = 2
-SEIMIN = 0 # If we drop to 1/4 current, high accels don't work right
+SEIMIN = 1 # If we drop to 1/4 current, high accels don't work right
 SFILT = 0
 IHOLDDELAY = 12
 IRUNDELAY = 0
@@ -87,7 +88,11 @@ class AutotuneTMC:
             raise config.error(
                 "Could not find any TMC driver config section for '%s' required by TMC autotuning"
                 % (self.name))
-
+        # TMCtstepHelper may have two signatures, let's pick an implementation
+        if 'pstepper' in signature(tmc.TMCtstepHelper).parameters:
+            self._set_driver_velocity_field = self._set_driver_velocity_field_new
+        else:
+            self._set_driver_velocity_field = self._set_driver_velocity_field_old
         # AutotuneTMC config parameters
         self.motor = config.get('motor')
         self.motor_name = "motor_constants " + self.motor
@@ -235,7 +240,19 @@ class AutotuneTMC:
         val = tmco.fields.set_field(field, arg)
         tmco.mcu_tmc.set_register(register, val, None)
 
-    def _set_driver_velocity_field(self, field, velocity):
+    def _set_driver_velocity_field_new(self, field, velocity):
+        tmco = self.tmc_object
+        register = tmco.fields.lookup_register(field, None)
+        # Just bail if the field doesn't exist.
+        if register is None:
+            return
+        arg = tmc.TMCtstepHelper(tmco.mcu_tmc, velocity,
+                                 pstepper=self.tmc_cmdhelper.stepper)
+        logging.info("autotune_tmc set %s %s=%s(%s)",
+                     self.name, field, repr(arg), repr(velocity))
+        tmco.fields.set_field(field, arg)
+
+    def _set_driver_velocity_field_old(self, field, velocity):
         tmco = self.tmc_object
         register = tmco.fields.lookup_register(field, None)
         # Just bail if the field doesn't exist.
@@ -294,7 +311,8 @@ class AutotuneTMC:
         else:
             # We do not have SG4, so this makes the world safe for
             # sensorless homing in the presence of CoolStep
-            return 0.5 * coolthrs
+            # return 0.5 * coolthrs
+            return 0.5 * vmaxpwm
 
     def _setup_pwm(self, tgoal, pwmthrs):
         motor = self.motor_object
@@ -326,12 +344,12 @@ class AutotuneTMC:
             # About half the cycle should be taken by the two slow decay cycles
             self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
 
+        if self.tbl is None:
+            self.tbl = TBL
+
         if self.toff == 1 and self.tbl == 0:
             # blank time of 16 cycles will not work in this case
             self.tbl = 1
-
-        if self.tbl is None:
-            self.tbl = TBL
 
         pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
         if self.tpfd is None:
