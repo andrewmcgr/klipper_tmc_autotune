@@ -149,7 +149,13 @@ class AutotuneTMC:
             self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         self.motor_object = self.printer.lookup_object(self.motor_name)
         #self.tune_driver()
+
     def handle_ready(self):
+      # klippy:ready handlers are limited in what they may do. Communicating with a MCU
+      # will pause the reactor and is thus forbidden. That code has to run outside of the event handler.
+      self.printer.reactor.register_callback(self._handle_ready_deferred)
+
+    def _handle_ready_deferred(self, eventtime):
         if self.tmc_init_registers is not None:
             self.tmc_init_registers(print_time=print_time)
         try:
