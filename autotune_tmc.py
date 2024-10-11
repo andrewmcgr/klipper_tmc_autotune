@@ -24,7 +24,6 @@ PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
-PWM_FREQ_TARGET = 55e3 # Default to 55 kHz
 
 # SpreadCycle parameters
 TPFD = 0
@@ -47,6 +46,13 @@ VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
 
 
 TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
+PWM_FREQ_TARGETS = {"tmc2130": 55e3,
+                    "tmc2208": 55e3,
+                    "tmc2209": 55e3,
+                    "tmc2240": 20e3, # 2240s run very hot at high frequencies
+                    "tmc2660": 55e3,
+                    "tmc5160": 55e3}
+
 
 AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
 
@@ -83,6 +89,7 @@ class AutotuneTMC:
             if config.has_section(driver_name):
                 self.tmc_section = config.getsection(driver_name)
                 self.driver_name = driver_name
+                self.driver_type = driver
                 break
         if self.tmc_section is None:
             raise config.error(
@@ -120,7 +127,8 @@ class AutotuneTMC:
         self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
         self.overvoltage_vth = config.getfloat('overvoltage_vth', default=OVERVOLTAGE_VTH,
                                               minval=0.0, maxval=60.0)
-        self.pwm_freq_target = config.getfloat('pwm_freq_target', default=PWM_FREQ_TARGET,
+        self.pwm_freq_target = config.getfloat('pwm_freq_target',
+                                               default=PWM_FREQ_TARGETS[self.driver_type],
                                                minval=10e3, maxval=100e3)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
