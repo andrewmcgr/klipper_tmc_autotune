@@ -41,8 +41,17 @@ Your driver configurations should contain:
 * Pins
 * Currents (run current, hold current, homing current if using a Klipper version that supports the latter)
 * `interpolate: true`
+* Comment out any other register settings and sensorless homing values (keep them for reference, but they will not be active)
 
 The Klipper documentation recommends not using interpolation. However, that is most applicable if using low microstep counts, and using the default driver configuration. Autotune gives better results, both dimensionally and quality, by using interpolation and as many microsteps as feasible.
+
+Check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1_pin` not `diag0_pin`, but MKS TMC 2240 stepsticks require `diag0_pin` and *not* `diag1_pin`. There may be other unusual drivers.
+
+## Sensorless homing
+
+Autotune can be used together with homing overrides for sensorless homing. However, you must adjust the `sg4_thrs` (TMC2209, TMC2260) and/or `sgt` (TMC5160, TMC2240, TMC2130, TMC2660) values specifically in the autotune sections. Attempting to make these changes via gcode or via the tmc driver sections will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
+
+Also note that the sensorless homing tuning will most likely change due to the other settings. In particular, autotune may require faster homing speeds to work; take the `rotation_distance` of the stepper as a minimum speed that can work, and if it is hard to tune home faster. Sensorless homing becomes much more sensitive at higher speeds.
 
 ## Autotune configuration
 
@@ -80,11 +89,6 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | pwm_freq_target | 55e3 | 10e3 to 60e3 | Switching frequency target, in Hz. The code selects the highest available PWM switching frequency less than or equal to this. The default usually results in 48 kHz switching. |
 | voltage | 24 | 0.0 to 60.0 | Voltage used to power this motor and stepper driver |
 | overvoltage_vth |  | 0.0 to 60.0 | Set the optional overvoltage snubber built into the TMC2240 and TMC5160. Users of the BTT SB2240 toolhead board should use it for the extruder by reading the actual toolhead voltage and adding 0.8V |
-
-  > Note:
-  >
-  > This autotuning extension can be used together with homing overrides for sensorless homing. However, remember to adjust the `sg4_thrs` and/or `sgt` values specifically in the autotune sections. Attempting to make these changes via gcode will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
-  > Also, check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1_pin` not `diag0_pin`, but MKS TMC 2240 stepsticks require `diag0_pin` and *not* `diag1_pin`. There may be other unusual drivers.
 
 Also if needed, you can adjust everything on the go when the printer is running by using the `AUTOTUNE_TMC` macro in the Klipper console. All previous parameters are available:
 ```
