@@ -2,7 +2,6 @@ import math, logging, os
 from enum import Enum
 from inspect import signature
 from . import tmc
-
 # Autotune config parameters
 TUNING_GOAL = 'auto'
 EXTRA_HYSTERESIS = 0
@@ -12,22 +11,18 @@ SGT = 1
 SG4_THRS = 40
 VOLTAGE = 24.0
 OVERVOLTAGE_VTH = None
-
 # Generic tuning parameters
 COOLSTEP_THRS_FACTOR = 0.75
 FULLSTEP_THRS_FACTOR = 1.2
 MULTISTEP_FILT = True
-
 # PWM parameters
 PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
-                     # gives more data about the motor and is needed for CoolStep.
+                    # gives more data about the motor and is needed for CoolStep.
 PWM_AUTOGRAD = True
 PWM_REG = 15
 PWM_LIM = 4
-
 # SpreadCycle parameters
 TPFD = 0
-
 # CoolStep parameters
 FAST_STANDSTILL = True
 SMALL_HYSTERESIS = False
@@ -39,12 +34,9 @@ SEIMIN = 1 # If we drop to 1/4 current, high accels don't work right
 SFILT = 0
 IHOLDDELAY = 12
 IRUNDELAY = 0
-
 # High speed parameters
 VHIGHFS = False
 VHIGHCHM = False # Even though we are fullstepping, we want SpreadCycle control
-
-
 TRINAMIC_DRIVERS = ["tmc2130", "tmc2208", "tmc2209", "tmc2240", "tmc2660", "tmc5160"]
 PWM_FREQ_TARGETS = {"tmc2130": 55e3,
                     "tmc2208": 55e3,
@@ -52,20 +44,15 @@ PWM_FREQ_TARGETS = {"tmc2130": 55e3,
                     "tmc2240": 20e3, # 2240s run very hot at high frequencies
                     "tmc2660": 55e3,
                     "tmc5160": 55e3}
-
-
 AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
-
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
     AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
     SILENT = "silent" # StealthChop at all speeds
     PERFORMANCE = "performance" # SpreadCycle at all speeds
-
 class AutotuneTMC:
     def __init__(self, config):
         self.printer = config.get_printer()
-
         # Load motor database
         pconfig = self.printer.lookup_object('configfile')
         dirname = os.path.dirname(os.path.realpath(__file__))
@@ -76,7 +63,6 @@ class AutotuneTMC:
             raise config.error("Cannot load config '%s'" % (filename,))
         for motor in motor_db.get_prefix_sections(''):
             self.printer.load_object(motor_db, motor.get_name())
-
         # Now find our stepper and driver in the running Klipper config
         self.name = config.get_name().split(None, 1)[-1]
         if not config.has_section(self.name):
@@ -118,7 +104,7 @@ class AutotuneTMC:
         self.fclk = None
         self.motor_object = None
         self.extra_hysteresis = config.getint('extra_hysteresis', default=EXTRA_HYSTERESIS,
-                                              minval=0, maxval=8)
+                                            minval=0, maxval=8)
         self.tbl = config.getint('tbl', default=TBL, minval=0, maxval=3)
         self.toff = config.getint('toff', default=None, minval=1, maxval=15)
         self.tpfd = config.getint('tpfd', default=None, minval=0, maxval=15)
@@ -126,10 +112,10 @@ class AutotuneTMC:
         self.sg4_thrs = config.getint('sg4_thrs', default=SG4_THRS, minval=0, maxval=255)
         self.voltage = config.getfloat('voltage', default=VOLTAGE, minval=0.0, maxval=60.0)
         self.overvoltage_vth = config.getfloat('overvoltage_vth', default=OVERVOLTAGE_VTH,
-                                              minval=0.0, maxval=60.0)
+                                            minval=0.0, maxval=60.0)
         self.pwm_freq_target = config.getfloat('pwm_freq_target',
-                                               default=PWM_FREQ_TARGETS[self.driver_type],
-                                               minval=10e3, maxval=100e3)
+                                            default=PWM_FREQ_TARGETS[self.driver_type],
+                                            minval=10e3, maxval=100e3)
         self.printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
         self.printer.register_event_handler("klippy:ready",
@@ -137,9 +123,8 @@ class AutotuneTMC:
         # Register command
         gcode = self.printer.lookup_object("gcode")
         gcode.register_mux_command("AUTOTUNE_TMC", "STEPPER", self.name,
-                                   self.cmd_AUTOTUNE_TMC,
-                                   desc=self.cmd_AUTOTUNE_TMC_help)
-
+                                self.cmd_AUTOTUNE_TMC,
+                                desc=self.cmd_AUTOTUNE_TMC_help)
     def handle_connect(self):
         self.tmc_object = self.printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
@@ -167,7 +152,6 @@ class AutotuneTMC:
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
-
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
@@ -213,7 +197,6 @@ class AutotuneTMC:
             if overvoltage_vth >= 0.0 or overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
         self.tune_driver()
-
     def tune_driver(self, print_time=None):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
@@ -236,8 +219,6 @@ class AutotuneTMC:
         self._setup_coolstep(coolthrs)
         self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
-
-
     def _set_driver_field(self, field, arg):
         tmco = self.tmc_object
         register = tmco.fields.lookup_register(field, None)
@@ -247,7 +228,6 @@ class AutotuneTMC:
         logging.info("autotune_tmc set %s %s=%s", self.name, field, repr(arg))
         val = tmco.fields.set_field(field, arg)
         tmco.mcu_tmc.set_register(register, val, None)
-
     def _set_driver_velocity_field_new(self, field, velocity):
         tmco = self.tmc_object
         register = tmco.fields.lookup_register(field, None)
@@ -255,11 +235,10 @@ class AutotuneTMC:
         if register is None:
             return
         arg = tmc.TMCtstepHelper(tmco.mcu_tmc, velocity,
-                                 pstepper=self.tmc_cmdhelper.stepper)
+                                pstepper=self.tmc_cmdhelper.stepper)
         logging.info("autotune_tmc set %s %s=%s(%s)",
-                     self.name, field, repr(arg), repr(velocity))
+                    self.name, field, repr(arg), repr(velocity))
         tmco.fields.set_field(field, arg)
-
     def _set_driver_velocity_field_old(self, field, velocity):
         tmco = self.tmc_object
         register = tmco.fields.lookup_register(field, None)
@@ -270,21 +249,19 @@ class AutotuneTMC:
         mres = tmco.fields.get_field("mres")
         arg = tmc.TMCtstepHelper(step_dist, mres, self.fclk, velocity)
         logging.info("autotune_tmc set %s %s=%s(%s)",
-                     self.name, field, repr(arg), repr(velocity))
+                    self.name, field, repr(arg), repr(velocity))
         tmco.fields.set_field(field, arg)
-
     def _set_pwmfreq(self):
         # calculate the highest pwm_freq that gives less than 50 kHz chopping
         pwm_freq = next((i
-                         for i in [(3, 2./410),
-                                   (2, 2./512),
-                                   (1, 2./683),
-                                   (0, 2./1024),
-                                   (0, 0.) # Default case, just do the best we can.
-                                   ]
-                         if self.fclk*i[1] < self.pwm_freq_target))[0]
+                        for i in [(3, 2./410),
+                                (2, 2./512),
+                                (1, 2./683),
+                                (0, 2./1024),
+                                (0, 0.) # Default case, just do the best we can.
+                                ]
+                        if self.fclk*i[1] < self.pwm_freq_target))[0]
         self._set_driver_field('pwm_freq', pwm_freq)
-
     def _set_hysteresis(self, run_current):
         hstrt, hend = self.motor_object.hysteresis(
             volts=self.voltage,
@@ -295,7 +272,6 @@ class AutotuneTMC:
             extra=self.extra_hysteresis)
         self._set_driver_field('hstrt', hstrt)
         self._set_driver_field('hend', hend)
-
     def _set_sg4thrs(self):
         if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
             # we have SG4
@@ -307,7 +283,6 @@ class AutotuneTMC:
         else:
             # We do not have SG4
             pass
-
     def _pwmthrs(self, vmaxpwm, coolthrs):
         if self.tmc_object.fields.lookup_register("sg4_thrs", None) is not None:
             # we have SG4
@@ -321,54 +296,55 @@ class AutotuneTMC:
             # sensorless homing in the presence of CoolStep
             # return 0.5 * coolthrs
             return 0.5 * vmaxpwm
-
     def _setup_pwm(self, tgoal, pwmthrs):
-        motor = self.motor_object
-        pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=self.fclk)
-        pwmofs = motor.pwmofs(volts=self.voltage, current=self.run_current)
-        self._set_driver_field('pwm_autoscale', PWM_AUTOSCALE)
-        self._set_driver_field('pwm_autograd', PWM_AUTOGRAD)
-        self._set_driver_field('pwm_grad', pwmgrad)
-        self._set_driver_field('pwm_ofs', pwmofs)
-        self._set_driver_field('pwm_reg', PWM_REG)
-        self._set_driver_field('pwm_lim', PWM_LIM)
-        if tgoal == TuningGoal.AUTOSWITCH:
-            self._set_driver_velocity_field('tpwmthrs', pwmthrs)
-            self._set_driver_field('en_pwm_mode', True)
-            self._set_driver_field('en_spreadcycle', False) # TMC2208 use en_spreadcycle instead of en_pwm_mode
-        elif tgoal == TuningGoal.SILENT:
-            self._set_driver_field('tpwmthrs', 0)
-            self._set_driver_field('en_pwm_mode', True)
-            self._set_driver_field('en_spreadcycle', False) # TMC2208 use en_spreadcycle instead of en_pwm_mode
-        elif tgoal == TuningGoal.PERFORMANCE:
-            self._set_driver_field('tpwmthrs', 0xfffff)
-            self._set_driver_field('en_pwm_mode', False)
-            self._set_driver_field('en_spreadcycle', True) # TMC2208 use en_spreadcycle instead of en_pwm_mode
+    motor = self.motor_object
+    pwmgrad = motor.pwmgrad(volts=self.voltage, fclk=self.fclk)
+    pwmofs = motor.pwmofs(volts=self.voltage, current=self.run_current)
+    self._set_driver_field('pwm_autoscale', PWM_AUTOSCALE)
+    self._set_driver_field('pwm_autograd', PWM_AUTOGRAD)
+    self._set_driver_field('pwm_grad', pwmgrad)
+    self._set_driver_field('pwm_ofs', pwmofs)
+    self._set_driver_field('pwm_reg', PWM_REG)
+    self._set_driver_field('pwm_lim', PWM_LIM)
 
+    # Force Z-axis stepper to use SpreadCycle mode
+    if self.name.startswith("stepper_z"):
+        self._set_driver_field('tpwmthrs', 0xfffff)
+        self._set_driver_field('en_pwm_mode', False)
+        self._set_driver_field('en_spreadcycle', True)  # For TMC2208 driver
+        return
+
+    # Set mode based on the tuning goal
+    if tgoal == TuningGoal.AUTOSWITCH:
+        self._set_driver_velocity_field('tpwmthrs', pwmthrs)
+        self._set_driver_field('en_pwm_mode', True)
+        self._set_driver_field('en_spreadcycle', False)  # For TMC2208
+    elif tgoal == TuningGoal.SILENT:
+        self._set_driver_field('tpwmthrs', 0)
+        self._set_driver_field('en_pwm_mode', True)
+        self._set_driver_field('en_spreadcycle', False)  # For TMC2208
+    elif tgoal == TuningGoal.PERFORMANCE:
+        self._set_driver_field('tpwmthrs', 0xfffff)
+        self._set_driver_field('en_pwm_mode', False)
+        self._set_driver_field('en_spreadcycle', True)  # For TMC2208
     def _setup_spreadcycle(self):
         ncycles = int(math.ceil(self.fclk / self.pwm_freq_target))
         sdcycles = ncycles / 4
         if self.toff == 0 or self.toff is None:
             # About half the cycle should be taken by the two slow decay cycles
             self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
-
         if self.tbl is None:
             self.tbl = TBL
-
         if self.toff == 1 and self.tbl == 0:
             # blank time of 16 cycles will not work in this case
             self.tbl = 1
-
         pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - [16, 34, 36, 54][self.tbl]
         if self.tpfd is None:
             self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
-
         logging.info("autotune_tmc %s ncycles=%d pfdcycles=%d", self.name, ncycles, pfdcycles)
-
         self._set_driver_field('tpfd', self.tpfd)
         self._set_driver_field('tbl', self.tbl)
         self._set_driver_field('toff', self.toff)
-
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field('tcoolthrs', coolthrs)
         self._set_driver_field('sgt', self.sgt)
@@ -382,12 +358,10 @@ class AutotuneTMC:
         self._set_driver_field('sfilt', SFILT)
         self._set_driver_field('iholddelay', IHOLDDELAY)
         self._set_driver_field('irundelay', IRUNDELAY)
-
     def _setup_highspeed(self, vhigh):
         self._set_driver_velocity_field('thigh', vhigh)
         self._set_driver_field('vhighfs', VHIGHFS)
         self._set_driver_field('vhighchm', VHIGHCHM)
-
-
 def load_config_prefix(config):
     return AutotuneTMC(config)
+
