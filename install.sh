@@ -3,6 +3,12 @@
 KLIPPER_PATH="${HOME}/klipper"
 AUTOTUNETMC_PATH="${HOME}/klipper_tmc_autotune"
 
+if [[ -e ${KLIPPER_PATH}/klippy/plugins/ ]]; then
+    KLIPPER_PLUGINS_PATH="${KLIPPER_PATH}/klippy/plugins/"
+else
+    KLIPPER_PLUGINS_PATH="${KLIPPER_PATH}/klippy/extras/"
+fi
+
 set -eu
 export LC_ALL=C
 
@@ -42,9 +48,10 @@ function check_download {
 
 function link_extension {
     echo "[INSTALL] Linking extension to Klipper..."
-    ln -srfn "${AUTOTUNETMC_PATH}/autotune_tmc.py" "${KLIPPER_PATH}/klippy/extras/autotune_tmc.py"
-    ln -srfn "${AUTOTUNETMC_PATH}/motor_constants.py" "${KLIPPER_PATH}/klippy/extras/motor_constants.py"
-    ln -srfn "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PATH}/klippy/extras/motor_database.cfg"
+
+    ln -srfn "${AUTOTUNETMC_PATH}/autotune_tmc.py" "${KLIPPER_PLUGINS_PATH}/autotune_tmc.py"
+    ln -srfn "${AUTOTUNETMC_PATH}/motor_constants.py" "${KLIPPER_PLUGINS_PATH}/motor_constants.py"
+    ln -srfn "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PLUGINS_PATH}/motor_database.cfg"
 }
 
 function restart_klipper {
