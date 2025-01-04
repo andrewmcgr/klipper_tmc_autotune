@@ -113,6 +113,8 @@ max_current: 0.00
 steps_per_revolution: 200
 ```
 
+Note that lead screw motors very often do not have a published torque. Use an online calculator to estimate the torque from the lead screw thrust, for example https://www.dingsmotionusa.com/torque-calculator.
+
 
 ## Removing this Klipper extension
 
