@@ -18,6 +18,9 @@ COOLSTEP_THRS_FACTOR = 0.75
 FULLSTEP_THRS_FACTOR = 1.2
 MULTISTEP_FILT = True
 
+# 2240-specific parameters
+SLOPE_CONTROL = 3
+
 # PWM parameters
 PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
                      # gives more data about the motor and is needed for CoolStep.
@@ -242,6 +245,8 @@ class AutotuneTMC:
         self._setup_coolstep(coolthrs)
         self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
+        # Cool down 2240s
+        self._set_driver_field('slope_control', SLOPE_CONTROL)
 
 
     def _set_driver_field(self, field, arg):
