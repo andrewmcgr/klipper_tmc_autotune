@@ -266,8 +266,7 @@ class AutotuneTMC:
             if self.tuning_goal == TuningGoal.AUTO:
                 self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
         # printing tuning goal
-        if verbose == 1:
-            ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
+            
         
 
         # setting extra_hysteresis
@@ -275,60 +274,88 @@ class AutotuneTMC:
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 or extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
-        # verbose
-        if verbose == 1:
-            ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
-
 
         # setting tbl
         tbl = gcmd.get_int('TBL', None)
         if tbl is not None:
             if tbl >= 0 or tbl <= 3:
-                self.tbl = tbl
-        # verbose
-        if verbose == 1:
-            ConsoleOutput.print("tbl: %s" % (self.tbl))
-        
+                self.tbl = tbl  
 
         # setting toff
         toff = gcmd.get_int('TOFF', None)
         if toff is not None:
             if toff >= 1 or toff <= 15:
                 self.toff = toff
-        # verbose
-        if verbose == 1:
-            ConsoleOutput.print("toff: %s" % (self.toff))
 
-
+        # setting tpfd
         tpfd = gcmd.get_int('TPFD', None)
         if tpfd is not None:
             if tpfd >= 0 or tpfd <= 15:
                 self.tpfd = tpfd
+
+        # setting sgt
         sgt = gcmd.get_int('SGT', None)
         if sgt is not None:
             if sgt >= -64 or sgt <= 63:
                 self.sgt = sgt
+
+        # setting sg4_thrs
         sg4_thrs = gcmd.get_int('SG4_THRS', None)
         if sg4_thrs is not None:
             if sg4_thrs >= 0 or sg4_thrs <= 255:
                 self.sg4_thrs = sg4_thrs
+        
+        # setting voltage
         voltage = gcmd.get_float('VOLTAGE', None)
         if voltage is not None:
             if voltage >= 0.0 or voltage <= 60.0:
                 self.voltage = voltage
+
+        # setting overvoltage_vth        
         overvoltage_vth = gcmd.get_float('OVERVOLTAGE_VTH', None)
         if overvoltage_vth is not None:
             if overvoltage_vth >= 0.0 or overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
-        self.tune_driver()
+
+        
+        self.tune_driver(verbose=verbose)
+
+
+        if verbose == 1:
+            ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
+            ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
+            ConsoleOutput.print("tpfd: %s" % (self.tpfd))
+            ConsoleOutput.print("tbl: %s" % (self.tbl))
+            ConsoleOutput.print("toff: %s" % (self.toff))
+            ConsoleOutput.print("sgt: %s" % (self.sgt))
+            ConsoleOutput.print("sg4_thrs: %s" % (self.sg4_thrs))
+            ConsoleOutput.print("voltage: %s" % (self.voltage))
+            ConsoleOutput.print("overvoltage_vth: %s" % (self.overvoltage_vth))
+
+            ConsoleOutput.print("run_current: %s" % (self.run_current))
+            ConsoleOutput.print("pwm_freq: %s" % (self.pwm_freq))
+
+
 
     def tune_driver(self, print_time=None):
+
+        # setting the current
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
+
+        # setting the pwm freq
         self._set_pwmfreq()
+
+        # setting up spreadcycle
         self._setup_spreadcycle()
+
+        # setting up hysteresis
         self._set_hysteresis(self.run_current)
+
+        # setting up sg4thrs
         self._set_sg4thrs()
+
+        # setting up motor
         motor = self.motor_object
         maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
@@ -346,6 +373,8 @@ class AutotuneTMC:
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
         # Cool down 2240s
         self._set_driver_field('slope_control', SLOPE_CONTROL)
+
+
 
 
     def _set_driver_field(self, field, arg):
@@ -385,7 +414,7 @@ class AutotuneTMC:
 
     def _set_pwmfreq(self):
         # calculate the highest pwm_freq that gives less than 50 kHz chopping
-        pwm_freq = next((i
+        self.pwm_freq = next((i
                          for i in [(3, 2./410),
                                    (2, 2./512),
                                    (1, 2./683),
@@ -393,7 +422,8 @@ class AutotuneTMC:
                                    (0, 0.) # Default case, just do the best we can.
                                    ]
                          if self.fclk*i[1] < self.pwm_freq_target))[0]
-        self._set_driver_field('pwm_freq', pwm_freq)
+        
+        self._set_driver_field('pwm_freq', self.pwm_freq)
 
     def _set_hysteresis(self, run_current):
         hstrt, hend = self.motor_object.hysteresis(
