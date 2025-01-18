@@ -3,6 +3,10 @@ from enum import Enum
 from inspect import signature
 from . import tmc
 
+
+from .utils import ConsoleOutput
+
+
 # Autotune config parameters
 TUNING_GOAL = 'auto'
 EXTRA_HYSTERESIS = 0
