@@ -252,28 +252,54 @@ class AutotuneTMC:
         logging.info("AUTOTUNE_TMC %s", self.name)
         tgoal = gcmd.get('TUNING_GOAL', None)
         verbose = gcmd.get('TUNING_GOAL', 1)
-        ConsoleOutput.print("starting auto tuning")
+        if verbose == 1:
+            ConsoleOutput.print("starting auto tuning")
+        
+
+        # setting tuning goal
         if tgoal is not None:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
-                ConsoleOutput.print("tuning goal: %s" % (TuningGoal(tgoal)))
             except ValueError:
                 # TODO: add some logging/error here in case the tuning_goal doesn't exist
                 pass
             if self.tuning_goal == TuningGoal.AUTO:
                 self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
+        # printing tuning goal
+        if verbose == 1:
+            ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
+        
+
+        # setting extra_hysteresis
         extra_hysteresis = gcmd.get_int('EXTRA_HYSTERESIS', None)
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 or extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
+        # verbose
+        if verbose == 1:
+            ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
+
+
+        # setting tbl
         tbl = gcmd.get_int('TBL', None)
         if tbl is not None:
             if tbl >= 0 or tbl <= 3:
                 self.tbl = tbl
+        # verbose
+        if verbose == 1:
+            ConsoleOutput.print("tbl: %s" % (self.tbl))
+        
+
+        # setting toff
         toff = gcmd.get_int('TOFF', None)
         if toff is not None:
             if toff >= 1 or toff <= 15:
                 self.toff = toff
+        # verbose
+        if verbose == 1:
+            ConsoleOutput.print("toff: %s" % (self.toff))
+
+
         tpfd = gcmd.get_int('TPFD', None)
         if tpfd is not None:
             if tpfd >= 0 or tpfd <= 15:
