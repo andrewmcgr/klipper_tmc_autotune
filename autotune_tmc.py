@@ -67,7 +67,7 @@ AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1',
 
 ST_COMMANDS = {
     'AUTOTUNE_TMC': (
-        'Auto tunes a tmc driver'
+        'Apply autotuning configuration to TMC stepper driver'
     ),
     'TAT_AUTOTUNE': (
         'A wrapper for AUTOTUNE_TMC'
@@ -251,9 +251,12 @@ class AutotuneTMC:
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
         tgoal = gcmd.get('TUNING_GOAL', None)
+        verbose = gcmd.get('TUNING_GOAL', 1)
+        ConsoleOutput.print("starting auto tuning")
         if tgoal is not None:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
+                ConsoleOutput.print("tuning goal: %s" % (TuningGoal(tgoal)))
             except ValueError:
                 # TODO: add some logging/error here in case the tuning_goal doesn't exist
                 pass
