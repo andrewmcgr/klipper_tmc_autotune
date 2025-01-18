@@ -252,6 +252,7 @@ class AutotuneTMC:
         logging.info("AUTOTUNE_TMC %s", self.name)
         tgoal = gcmd.get('TUNING_GOAL', None)
         verbose = gcmd.get('TUNING_GOAL', 1)
+        
         if verbose == 1:
             ConsoleOutput.print("starting auto tuning")
         
@@ -318,7 +319,7 @@ class AutotuneTMC:
                 self.overvoltage_vth = overvoltage_vth
 
         
-        self.tune_driver(verbose=verbose)
+        self.tune_driver()
 
 
         if verbose == 1:
