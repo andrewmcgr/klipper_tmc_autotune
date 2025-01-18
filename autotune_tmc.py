@@ -67,10 +67,12 @@ class TuningGoal(str, Enum):
 
 class AutotuneTMC:
     def __init__(self, config):
-        self.printer = config.get_printer()
+        
+        self._config = config
+        self._printer = config.get_printer()
 
         # Load motor database
-        pconfig = self.printer.lookup_object('configfile')
+        pconfig = self._printer.lookup_object('configfile')
         dirname = os.path.dirname(os.path.realpath(__file__))
         filename = os.path.join(dirname, 'motor_database.cfg')
         try:
@@ -78,7 +80,13 @@ class AutotuneTMC:
         except Exception:
             raise config.error("Cannot load config '%s'" % (filename,))
         for motor in motor_db.get_prefix_sections(''):
-            self.printer.load_object(motor_db, motor.get_name())
+            self._printer.load_object(motor_db, motor.get_name())
+
+        
+        # Register the console print output callback to the corresponding Klipper function
+        gcode = self._printer.lookup_object('gcode')
+        ConsoleOutput.register_output_callback(gcode.respond_info)
+
 
         # Now find our stepper and driver in the running Klipper config
         self.name = config.get_name().split(None, 1)[-1]
@@ -133,24 +141,64 @@ class AutotuneTMC:
         self.pwm_freq_target = config.getfloat('pwm_freq_target',
                                                default=PWM_FREQ_TARGETS[self.driver_type],
                                                minval=10e3, maxval=100e3)
-        self.printer.register_event_handler("klippy:connect",
+        self._printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
-        self.printer.register_event_handler("klippy:ready",
+        self._printer.register_event_handler("klippy:ready",
                                             self.handle_ready)
         # Register command
-        gcode = self.printer.lookup_object("gcode")
+        self._register_commands
+
+
+    def _register_commands(self) -> None:
+        gcode = self._printer.lookup_object("gcode")
         gcode.register_mux_command("AUTOTUNE_TMC", "STEPPER", self.name,
                                    self.cmd_AUTOTUNE_TMC,
                                    desc=self.cmd_AUTOTUNE_TMC_help)
 
+        # Then, a hack to inject the macros into Klipper's config system in order to show them in the web
+        # interfaces. This is not a good way to do it, but it's the only way to do it for now to get
+        # a good user experience while using Shake&Tune (it's indeed easier to just click a macro button)
+
+        configfile = self._printer.lookup_object('configfile')
+        dirname = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(dirname, 'dummy_macros.cfg')
+        try:
+            dummy_macros_cfg = configfile.read_config(filename)
+        except Exception as err:
+            raise self._config.error(f'Cannot load TAT dummy macro {filename}') from err
+
+        for gcode_macro in dummy_macros_cfg.get_prefix_sections('gcode_macro '):
+            gcode_macro_name = gcode_macro.get_name()
+
+            # Replace the dummy description by the one from ST_COMMANDS (to avoid code duplication and define it in only one place)
+            command = gcode_macro_name.split(' ', 1)[1]
+            description = ST_COMMANDS.get(command, 'Shake&Tune macro')
+            gcode_macro.fileconfig.set(gcode_macro_name, 'description', description)
+
+            # Add the section to the Klipper configuration object with all its options
+            if not self._config.fileconfig.has_section(gcode_macro_name.lower()):
+                self._config.fileconfig.add_section(gcode_macro_name.lower())
+            for option in gcode_macro.fileconfig.options(gcode_macro_name):
+                value = gcode_macro.fileconfig.get(gcode_macro_name, option)
+                self._config.fileconfig.set(gcode_macro_name.lower(), option, value)
+                # Small trick to ensure the new injected sections are considered valid by Klipper config system
+                self._config.access_tracking[(gcode_macro_name.lower(), option.lower())] = 1
+
+            # Finally, load the section within the printer objects
+            self._printer.load_object(self._config, gcode_macro_name.lower())
+
+
+
+
+
     def handle_connect(self):
-        self.tmc_object = self.printer.lookup_object(self.driver_name)
+        self.tmc_object = self._printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
         try:
-            motor = self.printer.lookup_object(self.motor_name)
+            motor = self._printer.lookup_object(self.motor_name)
         except Exception:
-            raise self.printer.config_error(
+            raise self._printer.config_error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
                 "It is not part of the database, please define it in your config!"
                 % (self.motor_name))
@@ -158,13 +206,13 @@ class AutotuneTMC:
             # Very small motors may not run in silent mode.
             self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
             self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
-        self.motor_object = self.printer.lookup_object(self.motor_name)
+        self.motor_object = self._printer.lookup_object(self.motor_name)
         #self.tune_driver()
 
     def handle_ready(self):
       # klippy:ready handlers are limited in what they may do. Communicating with a MCU
       # will pause the reactor and is thus forbidden. That code has to run outside of the event handler.
-      self.printer.reactor.register_callback(self._handle_ready_deferred)
+      self._printer.reactor.register_callback(self._handle_ready_deferred)
 
     def _handle_ready_deferred(self, eventtime):
         if self.tmc_init_registers is not None:
@@ -176,6 +224,9 @@ class AutotuneTMC:
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
+
+
+    # AUTOTUNE_TMC command
 
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
