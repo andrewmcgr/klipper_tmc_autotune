@@ -1,3 +1,6 @@
+# this file is a direct copy of Shake&Tune 
+
+
 # Shake&Tune: 3D printer analysis tools
 #
 # Copyright (C) 2024 Félix Boisselier <felix@fboisselier.fr> (Frix_x on Discord)
