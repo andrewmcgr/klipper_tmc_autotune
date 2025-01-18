@@ -64,6 +64,18 @@ PWM_FREQ_TARGETS = {"tmc2130": 55e3,
 
 AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
 
+
+ST_COMMANDS = {
+    'AUTOTUNE_TMC': (
+        'Auto tunes a tmc driver'
+    ),
+    'TAT_AUTOTUNE': (
+        'A wrapper for AUTOTUNE_TMC'
+    )
+}
+
+
+
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
     AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
@@ -177,7 +189,7 @@ class AutotuneTMC:
 
             # Replace the dummy description by the one from ST_COMMANDS (to avoid code duplication and define it in only one place)
             command = gcode_macro_name.split(' ', 1)[1]
-            description = ST_COMMANDS.get(command, 'Shake&Tune macro')
+            description = ST_COMMANDS.get(command, 'TAT macro')
             gcode_macro.fileconfig.set(gcode_macro_name, 'description', description)
 
             # Add the section to the Klipper configuration object with all its options
