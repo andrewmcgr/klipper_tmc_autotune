@@ -4,7 +4,7 @@ from inspect import signature
 from . import tmc
 
 
-from .utils import ConsoleOutput
+from utils import ConsoleOutput
 
 
 # Autotune config parameters
