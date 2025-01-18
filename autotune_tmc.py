@@ -151,7 +151,7 @@ class AutotuneTMC:
         self._printer.register_event_handler("klippy:ready",
                                             self.handle_ready)
         # Register command
-        self._register_commands
+        self._register_commands()
 
 
     def _register_commands(self) -> None:
