@@ -94,8 +94,10 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | overvoltage_vth |  | 0.0 to 60.0 | Set the optional overvoltage snubber built into the TMC2240 and TMC5160. Users of the BTT SB2240 toolhead board should use it for the extruder by reading the actual toolhead voltage and adding 0.8V |
 
 Also if needed, you can adjust everything on the go when the printer is running by using the `AUTOTUNE_TMC` macro in the Klipper console. All previous parameters are available:
+
+this fork's AUTOTUNE_TMC command also has a VERBOSE parameter which is 1 (verbose is on) by default as this fork was originally created to add verbose but if you you dont want it you can always set it to 0 
 ```
-AUTOTUNE_TMC STEPPER=<name> [PARAMETER=<value>]
+AUTOTUNE_TMC STEPPER=<name> VERBOSE=1 [PARAMETER=<value>]
 ```
 
 

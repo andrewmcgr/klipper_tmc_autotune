@@ -254,7 +254,7 @@ class AutotuneTMC:
         verbose = gcmd.get('TUNING_GOAL', 1)
         
         if verbose == 1:
-            ConsoleOutput.print("starting auto tuning")
+            ConsoleOutput.print("Starting auto tuning")
         
 
         # setting tuning goal
@@ -323,18 +323,34 @@ class AutotuneTMC:
 
 
         if verbose == 1:
-            ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
-            ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
-            ConsoleOutput.print("tpfd: %s" % (self.tpfd))
-            ConsoleOutput.print("tbl: %s" % (self.tbl))
-            ConsoleOutput.print("toff: %s" % (self.toff))
-            ConsoleOutput.print("sgt: %s" % (self.sgt))
-            ConsoleOutput.print("sg4_thrs: %s" % (self.sg4_thrs))
-            ConsoleOutput.print("voltage: %s" % (self.voltage))
-            ConsoleOutput.print("overvoltage_vth: %s" % (self.overvoltage_vth))
+            ConsoleOutput.print(f"Stepper: {self.name} \n" + \
+                                f"Tuninggoal: {self.tuning_goal}" + \
+                                f"current: {self.run_current}" + \
+                                f"Voltage: {self.voltage}" + \
+                                f"Extra hysteresis:: {self.tuning_goal}" + \
+                                f"Tpfd: {self.tpfd}-tbl: {self.tbl}-toff: {self.toff}" + \
+                                f"Sgt: {self.sgt} - sg4_thrs: {self.sg4_thrs}" + \
+                                f"Overvoltage vth: {self.overvoltage_vth}" + \
+                                f"Pwm freq: {self.pwm_freq}" + \
+                                f"Max Pwm speed: {self.maxpwmrps}rps {self.vmaxpwm}mm/s" 
 
-            ConsoleOutput.print("run_current: %s" % (self.run_current))
-            ConsoleOutput.print("pwm_freq: %s" % (self.pwm_freq))
+                                )
+            
+
+            
+            #ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
+            #ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
+            #ConsoleOutput.print("tpfd: %.2f" % (self.tpfd))
+            #ConsoleOutput.print("tbl: %.2f" % (self.tbl))
+            #ConsoleOutput.print("toff: %.2f" % (self.toff))
+            #ConsoleOutput.print("sgt: %s" % (self.sgt))
+            #ConsoleOutput.print("sg4_thrs: %s" % (self.sg4_thrs))
+            #ConsoleOutput.print("voltage: %s" % (self.voltage))
+            #ConsoleOutput.print("overvoltage_vth: %s" % (self.overvoltage_vth))
+
+            #ConsoleOutput.print("run_current: %s" % (self.run_current))
+            #ConsoleOutput.print("pwm_freq: %s" % (self.pwm_freq))
+            
 
 
 
@@ -358,19 +374,24 @@ class AutotuneTMC:
 
         # setting up motor
         motor = self.motor_object
-        maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
+
+
+        # Speed at which we run out of PWM control and should switch to fullstep in rps
+        self.maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
-        # Speed at which we run out of PWM control and should switch to fullstep
-        vmaxpwm = maxpwmrps * rdist
-        logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
+        # Speed at which we run out of PWM control and should switch to fullstep in mm/s
+        self.vmaxpwm = self.maxpwmrps * rdist
+        logging.info("autotune_tmc using max PWM speed %f", self.vmaxpwm)
+
+
         if self.overvoltage_vth is not None:
             vth = int((self.overvoltage_vth / 0.009732))
             self._set_driver_field('overvoltage_vth', vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
-        self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
+        self._setup_pwm(self.tuning_goal, self._pwmthrs(self.vmaxpwm, coolthrs))
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
-        self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
+        self._setup_highspeed(FULLSTEP_THRS_FACTOR * self.vmaxpwm)
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
         # Cool down 2240s
         self._set_driver_field('slope_control', SLOPE_CONTROL)
