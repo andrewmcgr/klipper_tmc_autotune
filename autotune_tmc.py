@@ -332,7 +332,7 @@ class AutotuneTMC:
                                 f"Sgt: {self.sgt} - sg4_thrs: {self.sg4_thrs}\n" + \
                                 f"Overvoltage vth: {self.overvoltage_vth}\n" + \
                                 f"Pwm freq: {self.pwm_freq}\n" + \
-                                f"Max Pwm speed: {self.maxpwmrps}rps {self.vmaxpwm}mm/s\n" 
+                                f"Max Pwm speed: {round(self.maxpwmrps, 2)}rps {round(self.vmaxpwm, 1)}mm/s\n" 
 
                                 )
             
