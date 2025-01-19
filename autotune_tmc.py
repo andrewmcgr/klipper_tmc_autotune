@@ -323,16 +323,16 @@ class AutotuneTMC:
 
 
         if verbose == 1:
-            ConsoleOutput.print(f"Stepper: {self.name} \n" + \
-                                f"Tuninggoal: {self.tuning_goal}" + \
-                                f"current: {self.run_current}" + \
-                                f"Voltage: {self.voltage}" + \
-                                f"Extra hysteresis:: {self.tuning_goal}" + \
-                                f"Tpfd: {self.tpfd}-tbl: {self.tbl}-toff: {self.toff}" + \
-                                f"Sgt: {self.sgt} - sg4_thrs: {self.sg4_thrs}" + \
-                                f"Overvoltage vth: {self.overvoltage_vth}" + \
-                                f"Pwm freq: {self.pwm_freq}" + \
-                                f"Max Pwm speed: {self.maxpwmrps}rps {self.vmaxpwm}mm/s" 
+            ConsoleOutput.print(f"Stepper: {self.name}\n" + \
+                                f"Tuninggoal: {self.tuning_goal}\n" + \
+                                f"current: {self.run_current}\n" + \
+                                f"Voltage: {self.voltage}\n" + \
+                                f"Extra hysteresis:: {self.tuning_goal}\n" + \
+                                f"Tpfd: {self.tpfd}-tbl: {self.tbl}-toff: {self.toff}\n" + \
+                                f"Sgt: {self.sgt} - sg4_thrs: {self.sg4_thrs}\n" + \
+                                f"Overvoltage vth: {self.overvoltage_vth}\n" + \
+                                f"Pwm freq: {self.pwm_freq}\n" + \
+                                f"Max Pwm speed: {self.maxpwmrps}rps {self.vmaxpwm}mm/s\n" 
 
                                 )
             
