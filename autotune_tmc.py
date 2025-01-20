@@ -3,6 +3,11 @@ from enum import Enum
 from inspect import signature
 from . import tmc
 
+
+import io
+from typing import Callable, Optional
+
+
 # Autotune config parameters
 TUNING_GOAL = 'auto'
 EXTRA_HYSTERESIS = 0
@@ -59,6 +64,18 @@ PWM_FREQ_TARGETS = {"tmc2130": 55e3,
 
 AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'dual_carriage', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
 
+
+ST_COMMANDS = {
+    'AUTOTUNE_TMC': (
+        'Apply autotuning configuration to TMC stepper driver'
+    ),
+    'TAT_AUTOTUNE': (
+        'A wrapper for AUTOTUNE_TMC'
+    )
+}
+
+
+
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
     AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
@@ -67,10 +84,12 @@ class TuningGoal(str, Enum):
 
 class AutotuneTMC:
     def __init__(self, config):
-        self.printer = config.get_printer()
+        
+        self._config = config
+        self._printer = config.get_printer()
 
         # Load motor database
-        pconfig = self.printer.lookup_object('configfile')
+        pconfig = self._printer.lookup_object('configfile')
         dirname = os.path.dirname(os.path.realpath(__file__))
         filename = os.path.join(dirname, 'motor_database.cfg')
         try:
@@ -78,7 +97,13 @@ class AutotuneTMC:
         except Exception:
             raise config.error("Cannot load config '%s'" % (filename,))
         for motor in motor_db.get_prefix_sections(''):
-            self.printer.load_object(motor_db, motor.get_name())
+            self._printer.load_object(motor_db, motor.get_name())
+
+        
+        # Register the console print output callback to the corresponding Klipper function
+        gcode = self._printer.lookup_object('gcode')
+        ConsoleOutput.register_output_callback(gcode.respond_info)
+
 
         # Now find our stepper and driver in the running Klipper config
         self.name = config.get_name().split(None, 1)[-1]
@@ -133,24 +158,64 @@ class AutotuneTMC:
         self.pwm_freq_target = config.getfloat('pwm_freq_target',
                                                default=PWM_FREQ_TARGETS[self.driver_type],
                                                minval=10e3, maxval=100e3)
-        self.printer.register_event_handler("klippy:connect",
+        self._printer.register_event_handler("klippy:connect",
                                             self.handle_connect)
-        self.printer.register_event_handler("klippy:ready",
+        self._printer.register_event_handler("klippy:ready",
                                             self.handle_ready)
         # Register command
-        gcode = self.printer.lookup_object("gcode")
+        self._register_commands()
+
+
+    def _register_commands(self) -> None:
+        gcode = self._printer.lookup_object("gcode")
         gcode.register_mux_command("AUTOTUNE_TMC", "STEPPER", self.name,
                                    self.cmd_AUTOTUNE_TMC,
                                    desc=self.cmd_AUTOTUNE_TMC_help)
 
+        # Then, a hack to inject the macros into Klipper's config system in order to show them in the web
+        # interfaces. This is not a good way to do it, but it's the only way to do it for now to get
+        # a good user experience while using Shake&Tune (it's indeed easier to just click a macro button)
+
+        configfile = self._printer.lookup_object('configfile')
+        dirname = os.path.dirname(os.path.realpath(__file__))
+        filename = os.path.join(dirname, 'dummy_macros.cfg')
+        try:
+            dummy_macros_cfg = configfile.read_config(filename)
+        except Exception as err:
+            raise self._config.error(f'Cannot load TAT dummy macro {filename}') from err
+
+        for gcode_macro in dummy_macros_cfg.get_prefix_sections('gcode_macro '):
+            gcode_macro_name = gcode_macro.get_name()
+
+            # Replace the dummy description by the one from ST_COMMANDS (to avoid code duplication and define it in only one place)
+            command = gcode_macro_name.split(' ', 1)[1]
+            description = ST_COMMANDS.get(command, 'TAT macro')
+            gcode_macro.fileconfig.set(gcode_macro_name, 'description', description)
+
+            # Add the section to the Klipper configuration object with all its options
+            if not self._config.fileconfig.has_section(gcode_macro_name.lower()):
+                self._config.fileconfig.add_section(gcode_macro_name.lower())
+            for option in gcode_macro.fileconfig.options(gcode_macro_name):
+                value = gcode_macro.fileconfig.get(gcode_macro_name, option)
+                self._config.fileconfig.set(gcode_macro_name.lower(), option, value)
+                # Small trick to ensure the new injected sections are considered valid by Klipper config system
+                self._config.access_tracking[(gcode_macro_name.lower(), option.lower())] = 1
+
+            # Finally, load the section within the printer objects
+            self._printer.load_object(self._config, gcode_macro_name.lower())
+
+
+
+
+
     def handle_connect(self):
-        self.tmc_object = self.printer.lookup_object(self.driver_name)
+        self.tmc_object = self._printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
         try:
-            motor = self.printer.lookup_object(self.motor_name)
+            motor = self._printer.lookup_object(self.motor_name)
         except Exception:
-            raise self.printer.config_error(
+            raise self._printer.config_error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
                 "It is not part of the database, please define it in your config!"
                 % (self.motor_name))
@@ -158,13 +223,13 @@ class AutotuneTMC:
             # Very small motors may not run in silent mode.
             self.auto_silent = self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
             self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
-        self.motor_object = self.printer.lookup_object(self.motor_name)
+        self.motor_object = self._printer.lookup_object(self.motor_name)
         #self.tune_driver()
 
     def handle_ready(self):
       # klippy:ready handlers are limited in what they may do. Communicating with a MCU
       # will pause the reactor and is thus forbidden. That code has to run outside of the event handler.
-      self.printer.reactor.register_callback(self._handle_ready_deferred)
+      self._printer.reactor.register_callback(self._handle_ready_deferred)
 
     def _handle_ready_deferred(self, eventtime):
         if self.tmc_init_registers is not None:
@@ -177,10 +242,22 @@ class AutotuneTMC:
             self.fclk = 12.5e6
         self.tune_driver()
 
+
+
+
+    # AUTOTUNE_TMC command
+
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
         tgoal = gcmd.get('TUNING_GOAL', None)
+        verbose = gcmd.get('TUNING_GOAL', 1)
+        
+        if verbose == 1:
+            ConsoleOutput.print("Starting auto tuning")
+        
+
+        # setting tuning goal
         if tgoal is not None:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
@@ -189,64 +266,137 @@ class AutotuneTMC:
                 pass
             if self.tuning_goal == TuningGoal.AUTO:
                 self.tuning_goal = TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
+        # printing tuning goal
+            
+        
+
+        # setting extra_hysteresis
         extra_hysteresis = gcmd.get_int('EXTRA_HYSTERESIS', None)
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 or extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
+
+        # setting tbl
         tbl = gcmd.get_int('TBL', None)
         if tbl is not None:
             if tbl >= 0 or tbl <= 3:
-                self.tbl = tbl
+                self.tbl = tbl  
+
+        # setting toff
         toff = gcmd.get_int('TOFF', None)
         if toff is not None:
             if toff >= 1 or toff <= 15:
                 self.toff = toff
+
+        # setting tpfd
         tpfd = gcmd.get_int('TPFD', None)
         if tpfd is not None:
             if tpfd >= 0 or tpfd <= 15:
                 self.tpfd = tpfd
+
+        # setting sgt
         sgt = gcmd.get_int('SGT', None)
         if sgt is not None:
             if sgt >= -64 or sgt <= 63:
                 self.sgt = sgt
+
+        # setting sg4_thrs
         sg4_thrs = gcmd.get_int('SG4_THRS', None)
         if sg4_thrs is not None:
             if sg4_thrs >= 0 or sg4_thrs <= 255:
                 self.sg4_thrs = sg4_thrs
+        
+        # setting voltage
         voltage = gcmd.get_float('VOLTAGE', None)
         if voltage is not None:
             if voltage >= 0.0 or voltage <= 60.0:
                 self.voltage = voltage
+
+        # setting overvoltage_vth        
         overvoltage_vth = gcmd.get_float('OVERVOLTAGE_VTH', None)
         if overvoltage_vth is not None:
             if overvoltage_vth >= 0.0 or overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
+
+        
         self.tune_driver()
 
+
+        if verbose == 1:
+            ConsoleOutput.print(f"Stepper: {self.name}\n" + \
+                                f"Tuninggoal: {self.tuning_goal}\n" + \
+                                f"current: {self.run_current}\n" + \
+                                f"Voltage: {self.voltage}\n" + \
+                                f"Extra hysteresis:: {self.tuning_goal}\n" + \
+                                f"Tpfd: {self.tpfd}-tbl: {self.tbl}-toff: {self.toff}\n" + \
+                                f"Sgt: {self.sgt} - sg4_thrs: {self.sg4_thrs}\n" + \
+                                f"Overvoltage vth: {self.overvoltage_vth}\n" + \
+                                f"Pwm freq: {self.pwm_freq}\n" + \
+                                f"Max Pwm speed: {round(self.maxpwmrps, 2)}rps {round(self.vmaxpwm, 1)}mm/s\n" 
+
+                                )
+            
+
+            
+            #ConsoleOutput.print("tuning goal: %s" % (self.tuning_goal))
+            #ConsoleOutput.print("extra hysteresis: %s" % (self.extra_hysteresis))
+            #ConsoleOutput.print("tpfd: %.2f" % (self.tpfd))
+            #ConsoleOutput.print("tbl: %.2f" % (self.tbl))
+            #ConsoleOutput.print("toff: %.2f" % (self.toff))
+            #ConsoleOutput.print("sgt: %s" % (self.sgt))
+            #ConsoleOutput.print("sg4_thrs: %s" % (self.sg4_thrs))
+            #ConsoleOutput.print("voltage: %s" % (self.voltage))
+            #ConsoleOutput.print("overvoltage_vth: %s" % (self.overvoltage_vth))
+
+            #ConsoleOutput.print("run_current: %s" % (self.run_current))
+            #ConsoleOutput.print("pwm_freq: %s" % (self.pwm_freq))
+            
+
+
+
     def tune_driver(self, print_time=None):
+
+        # setting the current
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
+
+        # setting the pwm freq
         self._set_pwmfreq()
+
+        # setting up spreadcycle
         self._setup_spreadcycle()
+
+        # setting up hysteresis
         self._set_hysteresis(self.run_current)
+
+        # setting up sg4thrs
         self._set_sg4thrs()
+
+        # setting up motor
         motor = self.motor_object
-        maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
+
+
+        # Speed at which we run out of PWM control and should switch to fullstep in rps
+        self.maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
-        # Speed at which we run out of PWM control and should switch to fullstep
-        vmaxpwm = maxpwmrps * rdist
-        logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
+        # Speed at which we run out of PWM control and should switch to fullstep in mm/s
+        self.vmaxpwm = self.maxpwmrps * rdist
+        logging.info("autotune_tmc using max PWM speed %f", self.vmaxpwm)
+
+
         if self.overvoltage_vth is not None:
             vth = int((self.overvoltage_vth / 0.009732))
             self._set_driver_field('overvoltage_vth', vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
-        self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
+        self._setup_pwm(self.tuning_goal, self._pwmthrs(self.vmaxpwm, coolthrs))
         # One revolution every two seconds is about as slow as coolstep can go
         self._setup_coolstep(coolthrs)
-        self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
+        self._setup_highspeed(FULLSTEP_THRS_FACTOR * self.vmaxpwm)
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
         # Cool down 2240s
         self._set_driver_field('slope_control', SLOPE_CONTROL)
+
+
 
 
     def _set_driver_field(self, field, arg):
@@ -286,7 +436,7 @@ class AutotuneTMC:
 
     def _set_pwmfreq(self):
         # calculate the highest pwm_freq that gives less than 50 kHz chopping
-        pwm_freq = next((i
+        self.pwm_freq = next((i
                          for i in [(3, 2./410),
                                    (2, 2./512),
                                    (1, 2./683),
@@ -294,7 +444,8 @@ class AutotuneTMC:
                                    (0, 0.) # Default case, just do the best we can.
                                    ]
                          if self.fclk*i[1] < self.pwm_freq_target))[0]
-        self._set_driver_field('pwm_freq', pwm_freq)
+        
+        self._set_driver_field('pwm_freq', self.pwm_freq)
 
     def _set_hysteresis(self, run_current):
         hstrt, hend = self.motor_object.hysteresis(
@@ -402,3 +553,41 @@ class AutotuneTMC:
 
 def load_config_prefix(config):
     return AutotuneTMC(config)
+
+
+
+
+# utils :
+
+# this class is a direct copy of Shake&Tune 
+
+
+# Shake&Tune: 3D printer analysis tools
+#
+# Copyright (C) 2024 Félix Boisselier <felix@fboisselier.fr> (Frix_x on Discord)
+# Licensed under the GNU General Public License v3.0 (GPL-3.0)
+#
+# File: console_output.py
+# Description: Defines the ConsoleOutput class for printing output to stdout or an alternative
+#              callback function, such as the Klipper console.
+
+class ConsoleOutput:
+    """
+    Print output to stdout or to an alternative like the Klipper console through a callback
+    """
+
+    _output_func: Optional[Callable[[str], None]] = None
+
+    @classmethod
+    def register_output_callback(cls, output_func: Optional[Callable[[str], None]]):
+        cls._output_func = output_func
+
+    @classmethod
+    def print(cls, *args, **kwargs):
+        if not cls._output_func:
+            print(*args, **kwargs)
+            return
+
+        with io.StringIO() as mem_output:
+            print(*args, file=mem_output, **kwargs)
+            cls._output_func(mem_output.getvalue())
