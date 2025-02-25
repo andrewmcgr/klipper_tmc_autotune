@@ -18,6 +18,9 @@ COOLSTEP_THRS_FACTOR = 0.75
 FULLSTEP_THRS_FACTOR = 1.2
 MULTISTEP_FILT = True
 
+# 2240-specific parameters
+SLOPE_CONTROL = 3
+
 # PWM parameters
 PWM_AUTOSCALE = True # Setup pwm autoscale even if we won't use PWM, because it
                      # gives more data about the motor and is needed for CoolStep.
@@ -54,7 +57,7 @@ PWM_FREQ_TARGETS = {"tmc2130": 55e3,
                     "tmc5160": 55e3}
 
 
-AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
+AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'dual_carriage', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
 
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
@@ -177,7 +180,7 @@ class AutotuneTMC:
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
     def cmd_AUTOTUNE_TMC(self, gcmd):
         logging.info("AUTOTUNE_TMC %s", self.name)
-        tgoal = gcmd.get('TUNING_GOAL', TUNING_GOAL).lower()
+        tgoal = gcmd.get('TUNING_GOAL', None)
         if tgoal is not None:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
@@ -242,6 +245,8 @@ class AutotuneTMC:
         self._setup_coolstep(coolthrs)
         self._setup_highspeed(FULLSTEP_THRS_FACTOR * vmaxpwm)
         self._set_driver_field('multistep_filt', MULTISTEP_FILT)
+        # Cool down 2240s
+        self._set_driver_field('slope_control', SLOPE_CONTROL)
 
 
     def _set_driver_field(self, field, arg):
