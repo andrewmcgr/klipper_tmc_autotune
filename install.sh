@@ -34,7 +34,7 @@ function check_download {
 
     if [ ! -d "${AUTOTUNETMC_PATH}" ]; then
         echo "[DOWNLOAD] Downloading Autotune TMC repository..."
-        if git -C $autotunedirname clone https://github.com/andrewmcgr/klipper_tmc_autotune.git $autotunebasename; then
+        if git -C $autotunedirname clone https://github.com/GravitySandwichh/klipper_tmc_autotune.git $autotunebasename; then
             chmod +x ${AUTOTUNETMC_PATH}/install.sh
             printf "[DOWNLOAD] Download complete!\n\n"
         else
