@@ -1,0 +1,26 @@
+name: Lint
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+
+
+permissions:
+  contents: read
+
+jobs:
+  check_motors:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.11
+
+    - name: Validate Motor Database
+      run: python3 ${{github.workspace}}/.github/scripts/motor_database_validator.py -v ${{github.workspace}}/motor_database.cfg
