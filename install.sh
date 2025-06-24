@@ -16,14 +16,14 @@ export LC_ALL=C
 function preflight_checks {
     if [ "$EUID" -eq 0 ]; then
         echo "[PRE-CHECK] This script must not be run as root!"
-        exit -1
+        exit 1
     fi
 
     if [ "$(sudo systemctl list-units --full -all -t service --no-legend | grep -F 'klipper.service')" ]; then
         printf "[PRE-CHECK] Klipper service found! Continuing...\n\n"
     else
         echo "[ERROR] Klipper service not found, please install Klipper first!"
-        exit -1
+        exit 1
     fi
 }
 
@@ -39,7 +39,7 @@ function check_download {
             printf "[DOWNLOAD] Download complete!\n\n"
         else
             echo "[ERROR] Download of Autotune TMC git repository failed!"
-            exit -1
+            exit 1
         fi
     else
         printf "[DOWNLOAD] Autotune TMC repository already found locally. Continuing...\n\n"
