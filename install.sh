@@ -29,13 +29,13 @@ function preflight_checks {
 
 function check_download {
     local autotunedirname autotunebasename
-    autotunedirname="$(dirname ${AUTOTUNETMC_PATH})"
-    autotunebasename="$(basename ${AUTOTUNETMC_PATH})"
+    autotunedirname="$(dirname "${AUTOTUNETMC_PATH}")"
+    autotunebasename="$(basename "${AUTOTUNETMC_PATH}")"
 
     if [ ! -d "${AUTOTUNETMC_PATH}" ]; then
         echo "[DOWNLOAD] Downloading Autotune TMC repository..."
-        if git -C $autotunedirname clone https://github.com/andrewmcgr/klipper_tmc_autotune.git $autotunebasename; then
-            chmod +x ${AUTOTUNETMC_PATH}/install.sh
+        if git -C "${autotunedirname}" clone https://github.com/andrewmcgr/klipper_tmc_autotune.git $autotunebasename; then
+            chmod +x "${AUTOTUNETMC_PATH}"/install.sh
             printf "[DOWNLOAD] Download complete!\n\n"
         else
             echo "[ERROR] Download of Autotune TMC git repository failed!"
