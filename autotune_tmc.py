@@ -116,7 +116,6 @@ class AutotuneTMC:
         self.auto_silent = False # Auto silent off by default
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
-        self.tmc_init_registers=None # Ditto
         self.run_current = 0.0
         self.fclk = None
         self.motor_object = None
@@ -167,8 +166,6 @@ class AutotuneTMC:
       self.printer.reactor.register_callback(self._handle_ready_deferred)
 
     def _handle_ready_deferred(self, eventtime):
-        if self.tmc_init_registers is not None:
-            self.tmc_init_registers(print_time=print_time)
         try:
             self.fclk = self.tmc_object.mcu_tmc.get_tmc_frequency()
         except AttributeError:
