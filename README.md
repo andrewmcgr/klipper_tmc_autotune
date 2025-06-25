@@ -119,6 +119,32 @@ steps_per_revolution: 200
 Note that lead screw motors very often do not have a published torque. Use an online calculator to estimate the torque from the lead screw thrust, for example https://www.dingsmotionusa.com/torque-calculator.
 
 
+## How do I now tuning was applied?
+
+Autotune logs all the settings it applies to the Klipper logfile (`klippy.log`), if autotune is correctly configured you should see lines similar to the following on printer startup:
+
+```text
+autotune_tmc set stepper_x pwm_freq=2
+autotune_tmc set stepper_y pwm_freq=2
+autotune_tmc set stepper_z pwm_freq=0
+autotune_tmc set stepper_z1 pwm_freq=0
+autotune_tmc set stepper_z2 pwm_freq=0
+autotune_tmc set extruder pwm_freq=0
+autotune_tmc stepper_x ncycles=219 pfdcycles=73
+autotune_tmc set stepper_x tpfd=1
+autotune_tmc stepper_y ncycles=219 pfdcycles=73
+autotune_tmc set stepper_y tpfd=1
+autotune_tmc stepper_z ncycles=625 pfdcycles=223
+autotune_tmc set stepper_z tpfd=2
+autotune_tmc stepper_z1 ncycles=625 pfdcycles=223
+autotune_tmc set stepper_z1 tpfd=2
+autotune_tmc stepper_z2 ncycles=625 pfdcycles=223
+autotune_tmc set stepper_z2 tpfd=2
+autotune_tmc extruder ncycles=625 pfdcycles=223
+...
+```
+
+
 ## Removing this Klipper extension
 
 Commenting out all `[autotune_tmc xxxx]` sections from your config and restarting Klipper will completely deactivate the plugin. So you can enable/disable it as you like.
