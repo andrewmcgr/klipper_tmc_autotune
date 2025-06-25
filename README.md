@@ -45,7 +45,10 @@ Your driver configurations should contain:
 
 The Klipper documentation recommends not using interpolation. However, that is most applicable if using low microstep counts, and using the default driver configuration. Autotune gives better results, both dimensionally and quality, by using interpolation and as many microsteps as feasible.
 
-Check the pinouts of your stepper driver boards: BTT TMC 2240 boards require configuring `diag1_pin` not `diag0_pin`, but MKS TMC 2240 stepsticks require `diag0_pin` and *not* `diag1_pin`. There may be other unusual drivers.
+Check the pinouts of your stepper driver boards, as there might be unusual boards out there. Known setups:
+  - BTT TMC 2240 stepsticks use `diag0_pin`.
+  - BTT TMC 5160 stepsticks use `diag1_pin`.
+  - MKS TMC 2240 stepsticks use `diag0_pin`.
 
 ## Sensorless homing
 
