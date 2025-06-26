@@ -59,6 +59,11 @@ PWM_FREQ_TARGETS = {"tmc2130": 55e3,
 
 AUTO_PERFORMANCE_MOTORS = {'stepper_x', 'stepper_y', 'dual_carriage', 'stepper_x1', 'stepper_y1', 'stepper_a', 'stepper_b', 'stepper_c'}
 
+class LogLevel(str, Enum):
+    DEBUG = 10
+    INFO = 20
+    OFF = 100
+
 class TuningGoal(str, Enum):
     AUTO = "auto" # This is the default: automatically choose SILENT for Z and PERFORMANCE for X/Y
     AUTOSWITCH = "autoswitch" # Experimental mode that use StealthChop at low speed and switch to SpreadCycle when needed
@@ -113,6 +118,13 @@ class AutotuneTMC:
             raise config.error(
                 "Tuning goal '%s' is invalid for TMC autotuning"
                 % (tgoal))
+        self.loglevel = LogLevel[
+            config.getchoice(
+                option="loglevel",
+                choices=[v.name.lower() for v in LogLevel],
+                default=LogLevel.INFO.name.lower(),
+            )
+        ]
         self.auto_silent = False # Auto silent off by default
         self.tmc_object=None # look this up at connect time
         self.tmc_cmdhelper=None # Ditto
@@ -138,10 +150,20 @@ class AutotuneTMC:
         self.printer.register_event_handler("klippy:ready",
                                             self.handle_ready)
         # Register command
-        gcode = self.printer.lookup_object("gcode")
-        gcode.register_mux_command("AUTOTUNE_TMC", "STEPPER", self.name,
+        self.gcode = self.printer.lookup_object("gcode")
+        self.gcode.register_mux_command("AUTOTUNE_TMC", "STEPPER", self.name,
                                    self.cmd_AUTOTUNE_TMC,
                                    desc=self.cmd_AUTOTUNE_TMC_help)
+
+    def log(self, level: LogLevel, msg: str) -> None:
+        if level >= self.loglevel:
+            self.gcode.respond_info("[autotune_tmc %s] %s" % (self.name, msg))
+
+    def debug(self, msg: str) -> None:
+        self.log(level=LogLevel.DEBUG, msg=msg)
+
+    def info(self, msg: str) -> None:
+        self.log(level=LogLevel.INFO, msg=msg)
 
     def handle_connect(self):
         self.tmc_object = self.printer.lookup_object(self.driver_name)
@@ -225,6 +247,7 @@ class AutotuneTMC:
 
     def tune_driver(self, print_time=None):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
+        self.info("Driver tuned")
         self.run_current = _currents[0]
         self._set_pwmfreq()
         self._setup_spreadcycle()
@@ -236,6 +259,7 @@ class AutotuneTMC:
         # Speed at which we run out of PWM control and should switch to fullstep
         vmaxpwm = maxpwmrps * rdist
         logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
+        self.debug("Using max PWM speed %f" % vmaxpwm)
         if self.overvoltage_vth is not None:
             vth = int((self.overvoltage_vth / 0.009732))
             self._set_driver_field('overvoltage_vth', vth)
@@ -256,6 +280,7 @@ class AutotuneTMC:
         if register is None:
             return
         logging.info("autotune_tmc set %s %s=%s", self.name, field, repr(arg))
+        self.debug("%s=%s" % (field, repr(arg)))
         val = tmco.fields.set_field(field, arg)
         tmco.mcu_tmc.set_register(register, val, None)
 
@@ -267,8 +292,10 @@ class AutotuneTMC:
             return
         arg = tmc.TMCtstepHelper(tmco.mcu_tmc, velocity,
                                  pstepper=self.tmc_cmdhelper.stepper)
-        logging.info("autotune_tmc set %s %s=%s(%s)",
-                     self.name, field, repr(arg), repr(velocity))
+        logging.info(
+            "autotune_tmc set %s %s=%s(%s)", self.name, field, repr(arg), repr(velocity)
+        )
+        self.debug("%s=%s(%s)" % (field, repr(arg), repr(velocity)))
         tmco.fields.set_field(field, arg)
 
     def _set_driver_velocity_field_old(self, field, velocity):
@@ -280,8 +307,10 @@ class AutotuneTMC:
         step_dist = self.tmc_cmdhelper.stepper.get_step_dist()
         mres = tmco.fields.get_field("mres")
         arg = tmc.TMCtstepHelper(step_dist, mres, self.fclk, velocity)
-        logging.info("autotune_tmc set %s %s=%s(%s)",
-                     self.name, field, repr(arg), repr(velocity))
+        logging.info(
+            "autotune_tmc set %s %s=%s(%s)", self.name, field, repr(arg), repr(velocity)
+        )
+        self.debug("%s=%s(%s)" % (field, repr(arg), repr(velocity)))
         tmco.fields.set_field(field, arg)
 
     def _set_pwmfreq(self):
@@ -375,6 +404,7 @@ class AutotuneTMC:
             self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
 
         logging.info("autotune_tmc %s ncycles=%d pfdcycles=%d", self.name, ncycles, pfdcycles)
+        self.debug("ncycles=%d pfdcycles=%d" % (ncycles, pfdcycles))
 
         self._set_driver_field('tpfd', self.tpfd)
         self._set_driver_field('tbl', self.tbl)
