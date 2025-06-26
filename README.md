@@ -54,7 +54,7 @@ Check the pinouts of your stepper driver boards, as there might be unusual board
 
 Autotune can be used together with homing overrides for sensorless homing. However, you must adjust the `sg4_thrs` (TMC2209, TMC2260) and/or `sgt` (TMC5160, TMC2240, TMC2130, TMC2660) values specifically in the autotune sections. Attempting to make these changes via gcode or via the tmc driver sections will not result in an error message, but will have no effect since the autotuning algorithm will simply override them.
 
-Also note that the sensorless homing tuning will most likely change due to the other settings. In particular, autotune may require faster homing speeds to work; take the `rotation_distance` of the stepper as a minimum speed that can work, and if it is hard to tune home faster. Sensorless homing becomes much more sensitive at higher speeds.
+Also, note that the sensorless homing tuning may be affected by other settings. In particular, autotune might require faster homing speeds for sensorless homing to function effectively. As a minimum speed that can work, consider the `rotation_distance` of the stepper. If tuning proves challenging, increase the homing speed since sensorless homing becomes much more sensitive at higher speeds. For instance, with a `rotation_distance` of 40, suitable starting homing speeds are 40-60mm/s for TMC2209/TMC2260 drivers and 80-100mm/s for TMC2130/TMC2240/TMC2660/TMC5160 drivers.
 
 ## Autotune configuration
 
