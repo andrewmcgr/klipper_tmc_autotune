@@ -344,6 +344,11 @@ class AutotuneTMC:
         self._set_driver_field('pwm_reg', PWM_REG)
         self._set_driver_field('pwm_lim', PWM_LIM)
         if tgoal == TuningGoal.AUTOSWITCH:
+            logging.info(
+                "autotune_tmc set %s autoswitch velocity limit to %.3f",
+                self.name,
+                pwmthrs,
+            )
             self._set_driver_velocity_field('tpwmthrs', pwmthrs)
             self._set_driver_field('en_pwm_mode', True)
             self._set_driver_field('en_spreadcycle', False) # TMC2208 use en_spreadcycle instead of en_pwm_mode
