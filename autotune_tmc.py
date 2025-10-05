@@ -300,18 +300,18 @@ class AutotuneTMC:
                          if self.fclk*i[1] < self.pwm_freq_target))[0]
         self._set_driver_field('pwm_freq', pwm_freq)
 
-    def _tblank_cycles(self, tbl):
+    def _tblank_cycles(self):
         if self.driver_type in ["tmc2208", "tmc2209"]:
             tblank_cycles = [16, 24, 32, 40]
         else:
             tblank_cycles = [16, 24, 36, 54]
-        return tblank_cycles[tbl]
+        return tblank_cycles[self.tbl]
 
     def _set_hysteresis(self, run_current):
         hstrt, hend = self.motor_object.hysteresis(
             volts=self.voltage,
             current=run_current,
-            tblank=self._tblank_cycles(self.tbl) / self.fclk,
+            tblank=self._tblank_cycles() / self.fclk,
             toff=self.toff,
             fclk=self.fclk,
             extra=self.extra_hysteresis)
@@ -386,7 +386,7 @@ class AutotuneTMC:
             # blank time of 16 cycles will not work in this case
             self.tbl = 1
 
-        pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - self._tblank_cycles(self.tbl)
+        pfdcycles = ncycles - (24 + 32 * self.toff) * 2 - self._tblank_cycles()
         if self.tpfd is None:
             self.tpfd = max(0, min(15, int(math.ceil(pfdcycles / 128))))
 
