@@ -311,7 +311,7 @@ class AutotuneTMC:
         hstrt, hend = self.motor_object.hysteresis(
             volts=self.voltage,
             current=run_current,
-            tblank=self._tblank_cycles() / self.fclk,
+            tblank_cycles=self._tblank_cycles(),
             toff=self.toff,
             fclk=self.fclk,
             extra=self.extra_hysteresis)
