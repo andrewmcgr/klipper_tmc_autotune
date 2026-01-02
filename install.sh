@@ -70,6 +70,15 @@ function link_extension {
     ln -srfn "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PLUGINS_PATH}/motor_database.cfg"
 }
 
+function add_to_exclude {
+    echo "[INSTALL] Adding files to Klipper git exclude..."
+    if [ -d "${KLIPPER_PATH}/.git" ]; then
+        grep -qxF "klippy/extras/save_state.py" "${KLIPPER_PATH}/.git/info/exclude" || echo "klippy/extras/save_state.py" >> "${KLIPPER_PATH}/.git/info/exclude"
+        grep -qxF "klippy/extras/motor_database.cfg" "${KLIPPER_PATH}/.git/info/exclude" || echo "klippy/extras/motor_database.cfg" >> "${KLIPPER_PATH}/.git/info/exclude"
+        grep -qxF "klippy/extras/autotune_tmc.py" "${KLIPPER_PATH}/.git/info/exclude" || echo "klippy/extras/autotune_tmc.py" >> "${KLIPPER_PATH}/.git/info/exclude"
+    fi
+}
+
 function restart_klipper {
     echo "[POST-INSTALL] Restarting Klipper..."
     sudo systemctl restart klipper
@@ -85,4 +94,5 @@ printf "======================================\n\n"
 preflight_checks
 check_download
 link_extension
+add_to_exclude
 restart_klipper
