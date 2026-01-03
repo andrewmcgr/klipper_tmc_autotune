@@ -1,7 +1,11 @@
 import math, logging, os
 from enum import Enum
 from inspect import signature
-from . import tmc
+
+try:
+    from klippy.extras import tmc # Kalico
+except ImportError:
+    from . import tmc # Klipper
 
 # Autotune config parameters
 TUNING_GOAL = 'auto'
