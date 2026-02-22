@@ -17,7 +17,7 @@ In particular, it enables StealthChop by default on Z motors and extruders, Cool
 
 ## Installation
 
-To install this plugin, run the installation script using the following command over SSH. This script will download this GitHub repository to your RaspberryPi home directory, and symlink the files in the Klipper extra folder.
+To install this plugin, run the installation script using the following command over SSH. This script will download this GitHub repository to your Raspberry Pi home directory, and symlink the files in the Klipper extra folder. Alternatively, if you are using KIAUH to manage your installation, you can find TMC autotune in the community extensions section.
 
 ```bash
 wget -O - https://raw.githubusercontent.com/andrewmcgr/klipper_tmc_autotune/main/install.sh | bash
@@ -43,7 +43,7 @@ Your driver configurations should contain:
 * `interpolate: true`
 * Comment out any other register settings and sensorless homing values (keep them for reference, but they will not be active)
 
-The Klipper documentation recommends not using interpolation. However, that is most applicable if using low microstep counts, and using the default driver configuration. Autotune gives better results, both dimensionally and quality, by using interpolation and as many microsteps as feasible.
+The Klipper documentation recommends not using interpolation. However, this advice is most relevant when using low microstep counts with the default driver configuration.. Autotune gives better results, both dimensionally and quality, by using interpolation and as many microsteps as feasible.
 
 Check the pinouts of your stepper driver boards, as there might be unusual boards out there. Known setups:
   - BTT TMC 2240 stepsticks use `diag0_pin`.
@@ -84,7 +84,7 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | Parameter | Default value | Range | Description |
 | --- | --- | --- | --- |
 | motor |  | [See DB](motor_database.cfg) | This parameter is used to retrieve the physical constants of the motor connected to the TMC driver |
-| tuning_goal | `auto` | `auto`, `silent`, `performance`, and `autoswitch` | Parameter to choose how to fine-tune the TMC driver using StealthChop and tailored parameters. By opting for `auto`, it will automatically apply `performance` for the X and Y axes and `silent` for the Z axis and extruder unless the motor is very small. `autoswitch` is an highly experimental choice that enables dynamic switching between `silent` and `performance` modes in real-time when needed. However, at the moment, this transition can potentially be troublesome, resulting in unwanted behavior, noise disturbances and lost steps. Hence, it is recommended to avoid using 'autoswitch' until its identified issues are fully addressed |
+| tuning_goal | `auto` | `auto`, `silent`, `performance`, and `autoswitch` | Parameter to choose how to fine-tune the TMC driver using StealthChop and tailored parameters. By opting for `auto`, it will automatically apply `performance` for the X and Y axes and `silent` for the Z axis and extruder unless the motor is very small. `autoswitch` is a highly experimental choice that enables dynamic switching between `silent` and `performance` modes in real-time when needed. However, at the moment, this transition can potentially be troublesome, resulting in unwanted behavior, noise disturbances and lost steps. Hence, it is recommended to avoid using `autoswitch` until these issues are fully resolved. |
 | extra_hysteresis | 0 | 0 to 8 | Additional hysteresis to reduce motor humming and vibration at low to medium speeds and maintain proper microstep accuracy. Warning: use only as much as necessary as a too high value will result in more chopper noise and motor power dissipation (ie. more heat) |
 | tbl | 2 | 0 to 3 | Comparator blank time. This time must safely cover the TMC switching events. A value of 1 or 2 (default) should be fine for most typical applications, but higher capacitive loads may require this to be set to 3. Also, lower values allow StealthChop to regulate to lower coil current values |
 | toff | 0 | 0 to 15 | Sets the slow decay time (off time) of the chopper cycle. This setting also limits the maximum chopper frequency. When set to 0, the value is automatically computed by this autotuning algorithm. Highest motor velocities sometimes benefit from forcing `toff` to 1 or 2 and a setting a short `tbl` of 1 or 0 |
@@ -106,7 +106,7 @@ AUTOTUNE_TMC STEPPER=<name> [PARAMETER=<value>]
 
 ## User-defined motors
 
-The motor names and their physical constants are in the [motor_database.cfg file](motor_database.cfg), which is automatically loaded by the script. If a motor is not listed, feel free to add its proper definition in your own `printer.cfg` configuration file by adding this section (PRs for other motors are also welcome). You can usually find this information in their datasheets but pay very special attention to the units!
+The motor names and their physical constants are in the [motor_database.cfg file](motor_database.cfg), which is automatically loaded by the script. If a motor is not listed, you can add its definition directly in your `printer.cfg` configuration file by adding this section (PRs for other motors are also welcome). You can usually find this information in their datasheets but pay close attention to the units!
 ```ini
 [motor_constants my_custom_motor]
 # Coil resistance, Ohms
@@ -124,7 +124,7 @@ steps_per_revolution: 200
 Note that lead screw motors very often do not have a published torque. Use an online calculator to estimate the torque from the lead screw thrust, for example https://www.dingsmotionusa.com/torque-calculator.
 
 
-## How do I now tuning was applied?
+## How do I know tuning was applied?
 
 Autotune logs all the settings it applies to the Klipper logfile (`klippy.log`), if autotune is correctly configured you should see lines similar to the following on printer startup:
 
@@ -154,4 +154,4 @@ autotune_tmc extruder ncycles=625 pfdcycles=223
 
 Commenting out all `[autotune_tmc xxxx]` sections from your config and restarting Klipper will completely deactivate the plugin. So you can enable/disable it as you like.
 
-If you want to uninstall it completely, remove the moonraker update manager section from your `moonraker.conf` file, delete the `~/klipper_tmc_autotune` folder on your Pi and restart Klipper and Moonraker.
+If you want to uninstall it completely, remove the moonraker update manager section from your `moonraker.conf` file, delete the `~/klipper_tmc_autotune` folder on your Raspberry Pi and restart Klipper and Moonraker.
