@@ -6,7 +6,7 @@ import math
 # R is coil resistance, Ohms
 # L is coil inductance, Henries
 # T is holding torque, Nm (be careful about units here)
-# I is nominal rated current, Amps
+# max_current is nominal rated current, Amps
 
 
 class MotorConstants:
@@ -17,8 +17,8 @@ class MotorConstants:
         self.L = config.getfloat("inductance", minval=0.0)
         self.T = config.getfloat("holding_torque", minval=0.0)
         self.S = config.getint("steps_per_revolution", minval=0)
-        self.I = config.getfloat("max_current", minval=0.0)
-        self.cbemf = self.T / (2.0 * self.I)
+        self.max_current = config.getfloat("max_current", minval=0.0)
+        self.cbemf = self.T / (2.0 * self.max_current)
 
     def pwmgrad(self, fclk=12.5e6, steps=0, volts=24.0):
         if steps == 0:
@@ -28,8 +28,8 @@ class MotorConstants:
         )
 
     def pwmofs(self, volts=24.0, current=0.0):
-        I = current if current > 0.0 else self.I
-        return int(math.ceil(374 * self.R * I / volts))
+        effective_current = current if current > 0.0 else self.max_current
+        return int(math.ceil(374 * self.R * effective_current / volts))
 
     # Maximum revolutions per second before PWM maxes out.
     def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0, current=0.0):
@@ -42,15 +42,20 @@ class MotorConstants:
     def hysteresis(
         self, extra=0, fclk=12.5e6, volts=24.0, current=0.0, tblank_cycles=24, toff=0
     ):
-        I = current if current > 0.0 else self.I
+        effective_current = current if current > 0.0 else self.max_current
         logging.info("autotune_tmc seting hysteresis based on %s V", volts)
         tsd = (12.0 + 32.0 * toff) / fclk
         dcoilblank = volts * (tblank_cycles / fclk) / self.L
-        dcoilsd = self.R * I * 2.0 * tsd / self.L
+        dcoilsd = self.R * effective_current * 2.0 * tsd / self.L
         logging.info("dcoilblank = %f, dcoilsd = %f", dcoilblank, dcoilsd)
         hysteresis = extra + int(
             math.ceil(
-                max(0.5 + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / I) / 32 - 8, -2)
+                max(
+                    0.5
+                    + ((dcoilblank + dcoilsd) * 2 * 248 * 32 / effective_current) / 32
+                    - 8,
+                    -2,
+                )
             )
         )
         htotal = min(hysteresis, 14)
