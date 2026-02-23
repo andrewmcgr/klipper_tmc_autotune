@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-from configparser import ConfigParser, Error
 import logging
 import sys
-from pathlib import Path
+from configparser import ConfigParser, Error
 from enum import IntEnum
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
