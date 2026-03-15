@@ -264,34 +264,57 @@ class AutotuneTMC:
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 and extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
+            else:
+                gcmd.respond_info(
+                    "EXTRA_HYSTERESIS=%d out of range (0-8), ignored" % extra_hysteresis
+                )
         tbl = gcmd.get_int("TBL", None)
         if tbl is not None:
             if tbl >= 0 and tbl <= 3:
                 self.tbl = tbl
+            else:
+                gcmd.respond_info("TBL=%d out of range (0-3), ignored" % tbl)
         toff = gcmd.get_int("TOFF", None)
         if toff is not None:
             if toff >= 1 and toff <= 15:
                 self.toff = toff
+            else:
+                gcmd.respond_info("TOFF=%d out of range (1-15), ignored" % toff)
         tpfd = gcmd.get_int("TPFD", None)
         if tpfd is not None:
             if tpfd >= 0 and tpfd <= 15:
                 self.tpfd = tpfd
+            else:
+                gcmd.respond_info("TPFD=%d out of range (0-15), ignored" % tpfd)
         sgt = gcmd.get_int("SGT", None)
         if sgt is not None:
             if sgt >= -64 and sgt <= 63:
                 self.sgt = sgt
+            else:
+                gcmd.respond_info("SGT=%d out of range (-64 to 63), ignored" % sgt)
         sg4_thrs = gcmd.get_int("SG4_THRS", None)
         if sg4_thrs is not None:
             if sg4_thrs >= 0 and sg4_thrs <= 255:
                 self.sg4_thrs = sg4_thrs
+            else:
+                gcmd.respond_info(
+                    "SG4_THRS=%d out of range (0-255), ignored" % sg4_thrs
+                )
         voltage = gcmd.get_float("VOLTAGE", None)
         if voltage is not None:
             if voltage >= 0.0 and voltage <= 60.0:
                 self.voltage = voltage
+            else:
+                gcmd.respond_info("VOLTAGE=%.1f out of range (0-60), ignored" % voltage)
         overvoltage_vth = gcmd.get_float("OVERVOLTAGE_VTH", None)
         if overvoltage_vth is not None:
             if overvoltage_vth >= 0.0 and overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
+            else:
+                gcmd.respond_info(
+                    "OVERVOLTAGE_VTH=%.1f out of range (0-60), ignored"
+                    % overvoltage_vth
+                )
         self.tune_driver()
 
     def tune_driver(self):
