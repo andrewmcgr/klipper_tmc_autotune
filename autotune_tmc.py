@@ -413,9 +413,7 @@ class AutotuneTMC:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
             return max(0.2 * vmaxpwm, 1.125 * coolthrs)
         else:
-            # We do not have SG4, so this makes the world safe for
-            # sensorless homing in the presence of CoolStep
-            # return 0.5 * coolthrs
+            # No SG4 — set pwmthrs for autoswitch mode transition
             return 0.5 * vmaxpwm
 
     def _setup_pwm(self, tgoal, pwmthrs):
