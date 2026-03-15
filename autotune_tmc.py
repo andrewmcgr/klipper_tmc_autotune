@@ -228,7 +228,6 @@ class AutotuneTMC:
             self.tuning_goal = (
                 TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
             )
-        # self.tune_driver()
 
     def handle_ready(self):
         # klippy:ready handlers are limited in what they may do. Communicating with a MCU
