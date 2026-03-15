@@ -3,7 +3,7 @@ import math
 
 # Motor database, contains specifications for stepper motors.
 
-# R is coil resistance, Ohms
+# coil_resistance: Ohms
 # L is coil inductance, Henries
 # T is holding torque, Nm (be careful about units here)
 # max_current is nominal rated current, Amps
@@ -13,7 +13,7 @@ class MotorConstants:
     def __init__(self, config):
         self.printer = config.get_printer()
         self.name = config.get_name().split()[-1]
-        self.R = config.getfloat("resistance", minval=0.0)
+        self.coil_resistance = config.getfloat("resistance", minval=0.0)
         self.L = config.getfloat("inductance", minval=0.0)
         self.T = config.getfloat("holding_torque", minval=0.0)
         self.S = config.getint("steps_per_revolution", minval=0)
@@ -29,7 +29,7 @@ class MotorConstants:
 
     def pwmofs(self, volts=24.0, current=0.0):
         effective_current = current if current > 0.0 else self.max_current
-        return int(math.ceil(374 * self.R * effective_current / volts))
+        return int(math.ceil(374 * self.coil_resistance * effective_current / volts))
 
     # Maximum revolutions per second before PWM maxes out.
     def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0, current=0.0):
@@ -46,7 +46,7 @@ class MotorConstants:
         logging.info("autotune_tmc seting hysteresis based on %s V", volts)
         tsd = (12.0 + 32.0 * toff) / fclk
         dcoilblank = volts * (tblank_cycles / fclk) / self.L
-        dcoilsd = self.R * effective_current * 2.0 * tsd / self.L
+        dcoilsd = self.coil_resistance * effective_current * 2.0 * tsd / self.L
         logging.info("dcoilblank = %f, dcoilsd = %f", dcoilblank, dcoilsd)
         hysteresis = extra + int(
             math.ceil(
