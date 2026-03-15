@@ -239,35 +239,35 @@ class AutotuneTMC:
                 )
         extra_hysteresis = gcmd.get_int("EXTRA_HYSTERESIS", None)
         if extra_hysteresis is not None:
-            if extra_hysteresis >= 0 or extra_hysteresis <= 8:
+            if extra_hysteresis >= 0 and extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
         tbl = gcmd.get_int("TBL", None)
         if tbl is not None:
-            if tbl >= 0 or tbl <= 3:
+            if tbl >= 0 and tbl <= 3:
                 self.tbl = tbl
         toff = gcmd.get_int("TOFF", None)
         if toff is not None:
-            if toff >= 1 or toff <= 15:
+            if toff >= 1 and toff <= 15:
                 self.toff = toff
         tpfd = gcmd.get_int("TPFD", None)
         if tpfd is not None:
-            if tpfd >= 0 or tpfd <= 15:
+            if tpfd >= 0 and tpfd <= 15:
                 self.tpfd = tpfd
         sgt = gcmd.get_int("SGT", None)
         if sgt is not None:
-            if sgt >= -64 or sgt <= 63:
+            if sgt >= -64 and sgt <= 63:
                 self.sgt = sgt
         sg4_thrs = gcmd.get_int("SG4_THRS", None)
         if sg4_thrs is not None:
-            if sg4_thrs >= 0 or sg4_thrs <= 255:
+            if sg4_thrs >= 0 and sg4_thrs <= 255:
                 self.sg4_thrs = sg4_thrs
         voltage = gcmd.get_float("VOLTAGE", None)
         if voltage is not None:
-            if voltage >= 0.0 or voltage <= 60.0:
+            if voltage >= 0.0 and voltage <= 60.0:
                 self.voltage = voltage
         overvoltage_vth = gcmd.get_float("OVERVOLTAGE_VTH", None)
         if overvoltage_vth is not None:
-            if overvoltage_vth >= 0.0 or overvoltage_vth <= 60.0:
+            if overvoltage_vth >= 0.0 and overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
         self.tune_driver()
 
