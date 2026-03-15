@@ -147,8 +147,12 @@ class AutotuneTMC:
         self.toff = config.getint("toff", default=None, minval=1, maxval=15)
         self.tpfd = config.getint("tpfd", default=None, minval=0, maxval=15)
         self.sgt = config.getint("sgt", default=SGT, minval=-64, maxval=63)
+        # TMC2240: default sg4_thrs to 0 so Klipper uses the SGT homing path,
+        # which is compatible with autotune's SpreadCycle and CoolStep config.
+        # Users can still set sg4_thrs explicitly to opt into SG4 homing.
+        sg4_thrs_default = 0 if self.driver_type == "tmc2240" else SG4_THRS
         self.sg4_thrs = config.getint(
-            "sg4_thrs", default=SG4_THRS, minval=0, maxval=255
+            "sg4_thrs", default=sg4_thrs_default, minval=0, maxval=255
         )
         # Coolstep Tunables
         self.se_min = config.getint("semin", default=SEMIN, minval=0, maxval=15)
