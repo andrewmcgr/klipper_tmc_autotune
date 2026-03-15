@@ -4,7 +4,7 @@ import math
 # Motor database, contains specifications for stepper motors.
 
 # coil_resistance: Ohms
-# L is coil inductance, Henries
+# coil_inductance: Henries
 # T is holding torque, Nm (be careful about units here)
 # max_current is nominal rated current, Amps
 
@@ -14,7 +14,7 @@ class MotorConstants:
         self.printer = config.get_printer()
         self.name = config.get_name().split()[-1]
         self.coil_resistance = config.getfloat("resistance", minval=0.0)
-        self.L = config.getfloat("inductance", minval=0.0)
+        self.coil_inductance = config.getfloat("inductance", minval=0.0)
         self.T = config.getfloat("holding_torque", minval=0.0)
         self.S = config.getint("steps_per_revolution", minval=0)
         self.max_current = config.getfloat("max_current", minval=0.0)
@@ -45,8 +45,10 @@ class MotorConstants:
         effective_current = current if current > 0.0 else self.max_current
         logging.info("autotune_tmc seting hysteresis based on %s V", volts)
         tsd = (12.0 + 32.0 * toff) / fclk
-        dcoilblank = volts * (tblank_cycles / fclk) / self.L
-        dcoilsd = self.coil_resistance * effective_current * 2.0 * tsd / self.L
+        dcoilblank = volts * (tblank_cycles / fclk) / self.coil_inductance
+        dcoilsd = (
+            self.coil_resistance * effective_current * 2.0 * tsd / self.coil_inductance
+        )
         logging.info("dcoilblank = %f, dcoilsd = %f", dcoilblank, dcoilsd)
         hysteresis = extra + int(
             math.ceil(
