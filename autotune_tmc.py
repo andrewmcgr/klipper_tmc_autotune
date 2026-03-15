@@ -196,7 +196,7 @@ class AutotuneTMC:
         if self.tuning_goal == TuningGoal.AUTO:
             # Very small motors may not run in silent mode.
             self.auto_silent = (
-                self.name not in AUTO_PERFORMANCE_MOTORS and motor.T > 0.3
+                self.name not in AUTO_PERFORMANCE_MOTORS and motor.holding_torque > 0.3
             )
             self.tuning_goal = (
                 TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE

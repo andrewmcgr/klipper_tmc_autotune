@@ -5,7 +5,7 @@ import math
 
 # coil_resistance: Ohms
 # coil_inductance: Henries
-# T is holding torque, Nm (be careful about units here)
+# holding_torque: Nm (be careful about units here)
 # max_current is nominal rated current, Amps
 
 
@@ -15,10 +15,10 @@ class MotorConstants:
         self.name = config.get_name().split()[-1]
         self.coil_resistance = config.getfloat("resistance", minval=0.0)
         self.coil_inductance = config.getfloat("inductance", minval=0.0)
-        self.T = config.getfloat("holding_torque", minval=0.0)
+        self.holding_torque = config.getfloat("holding_torque", minval=0.0)
         self.S = config.getint("steps_per_revolution", minval=0)
         self.max_current = config.getfloat("max_current", minval=0.0)
-        self.cbemf = self.T / (2.0 * self.max_current)
+        self.cbemf = self.holding_torque / (2.0 * self.max_current)
 
     def pwmgrad(self, fclk=12.5e6, steps=0, volts=24.0):
         if steps == 0:
