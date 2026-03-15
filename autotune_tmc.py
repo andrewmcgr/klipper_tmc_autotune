@@ -308,7 +308,7 @@ class AutotuneTMC:
         vmaxpwm = maxpwmrps * rdist
         logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
         if self.overvoltage_vth is not None:
-            vth = int((self.overvoltage_vth / 0.009732))
+            vth = int(self.overvoltage_vth / 0.009732)
             self._set_driver_field("overvoltage_vth", vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
