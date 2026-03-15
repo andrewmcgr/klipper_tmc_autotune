@@ -6,7 +6,8 @@ import math
 # coil_resistance: Ohms
 # coil_inductance: Henries
 # holding_torque: Nm (be careful about units here)
-# max_current is nominal rated current, Amps
+# steps_per_revolution: 200 (1.8deg) or 400 (0.9deg)
+# max_current: Amps
 
 
 class MotorConstants:
@@ -16,13 +17,13 @@ class MotorConstants:
         self.coil_resistance = config.getfloat("resistance", minval=0.0)
         self.coil_inductance = config.getfloat("inductance", minval=0.0)
         self.holding_torque = config.getfloat("holding_torque", minval=0.0)
-        self.S = config.getint("steps_per_revolution", minval=0)
+        self.steps_per_revolution = config.getint("steps_per_revolution", minval=0)
         self.max_current = config.getfloat("max_current", minval=0.0)
         self.cbemf = self.holding_torque / (2.0 * self.max_current)
 
     def pwmgrad(self, fclk=12.5e6, steps=0, volts=24.0):
         if steps == 0:
-            steps = self.S
+            steps = self.steps_per_revolution
         return int(
             math.ceil(self.cbemf * 2 * math.pi * fclk * 1.46 / (volts * 256.0 * steps))
         )
@@ -34,7 +35,7 @@ class MotorConstants:
     # Maximum revolutions per second before PWM maxes out.
     def maxpwmrps(self, fclk=12.5e6, steps=0, volts=24.0, current=0.0):
         if steps == 0:
-            steps = self.S
+            steps = self.steps_per_revolution
         return (255 - self.pwmofs(volts, current)) / (
             math.pi * self.pwmgrad(fclk, steps)
         )
