@@ -62,9 +62,9 @@ PWM_FREQ_TARGETS = {
     "tmc2208": 55e3,
     "tmc2209": 55e3,
     "tmc2240": 20e3,  # 2240s run very hot at high frequencies
-    "tmc2660": 20e3,  # Same as the 5160 for Klipper
+    "tmc2660": 20e3,  # 2660s and 5160s run very hot at high frequencies
     "tmc5160": 20e3,
-}  # 5160s run very hot at high frequencies
+}
 
 
 AUTO_PERFORMANCE_MOTORS = {
