@@ -293,7 +293,7 @@ class AutotuneTMC:
                 self.overvoltage_vth = overvoltage_vth
         self.tune_driver()
 
-    def tune_driver(self, print_time=None):
+    def tune_driver(self):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
         self._set_pwmfreq()
