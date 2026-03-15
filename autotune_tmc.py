@@ -357,7 +357,7 @@ class AutotuneTMC:
         tmco.fields.set_field(field, arg)
 
     def _set_pwmfreq(self):
-        # calculate the highest pwm_freq that gives less than 50 kHz chopping
+        # calculate the highest pwm_freq below pwm_freq_target
         pwm_freq = next(
             (
                 i
