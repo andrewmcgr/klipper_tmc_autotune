@@ -200,7 +200,7 @@ class AutotuneTMC:
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
         try:
             motor = self.printer.lookup_object(self.motor_name)
-        except Exception:
+        except self.printer.config_error:
             raise self.printer.config_error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
                 "It is not part of the database, please define it in your config!"
