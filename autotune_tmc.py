@@ -253,8 +253,10 @@ class AutotuneTMC:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
             except ValueError:
-                # TODO: add some logging/error here in case the tuning_goal doesn't exist
-                pass
+                raise gcmd.error(
+                    "Invalid tuning goal '%s', must be one of: %s"
+                    % (tgoal, ", ".join(g.value for g in TuningGoal))
+                )
             if self.tuning_goal == TuningGoal.AUTO:
                 self.tuning_goal = (
                     TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
