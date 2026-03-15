@@ -199,7 +199,7 @@ class AutotuneTMC:
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
         try:
-            motor = self.printer.lookup_object(self.motor_name)
+            self.motor_object = self.printer.lookup_object(self.motor_name)
         except self.printer.config_error:
             raise self.printer.config_error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
@@ -213,7 +213,7 @@ class AutotuneTMC:
             alias_target = self.printer.lookup_object(
                 "motor_constants " + alias_obj.motor, default=None
             )
-            if motor is alias_target:
+            if self.motor_object is alias_target:
                 pconfig = self.printer.lookup_object("configfile")
                 pconfig.runtime_warning(
                     "Motor name '%s' is deprecated, please update your config "
@@ -222,12 +222,12 @@ class AutotuneTMC:
         if self.tuning_goal == TuningGoal.AUTO:
             # Very small motors may not run in silent mode.
             self.auto_silent = (
-                self.name not in AUTO_PERFORMANCE_MOTORS and motor.holding_torque > 0.3
+                self.name not in AUTO_PERFORMANCE_MOTORS
+                and self.motor_object.holding_torque > 0.3
             )
             self.tuning_goal = (
                 TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
             )
-        self.motor_object = self.printer.lookup_object(self.motor_name)
         # self.tune_driver()
 
     def handle_ready(self):
