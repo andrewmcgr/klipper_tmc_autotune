@@ -58,7 +58,7 @@ Also, note that the sensorless homing tuning may be affected by other settings. 
 
 ## Autotune configuration
 
-Add the following to your `printer.cfg` (change motor names and remove or add any sections as needed) to enable the autotuning for your TMC drivers and motors and restart Klipper. You can also use the [example.cfg](./docs/example.cfg) as a template.
+Add an `[autotune_tmc]` section for each of the stepper motors you want to tune to your `printer.cfg`, using the motor name from the [motor database](motor_database.cfg). Your existing `[stepper_*]` and `[tmc* stepper_*]` sections should remain unchanged. You can also use the [example.cfg](./docs/example.cfg) as a template.
 
 ```ini
 [autotune_tmc stepper_x]
