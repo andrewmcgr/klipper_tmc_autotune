@@ -39,3 +39,6 @@ jobs:
 
     - name: Validate Motor Database
       run: python3 ${{github.workspace}}/.github/scripts/motor_database_validator.py -v ${{github.workspace}}/motor_database.cfg
+
+    - name: Check for Duplicate Motor Specs
+      run: python3 ${{github.workspace}}/.github/scripts/motor_database_validator.py -v --check-duplicates ${{github.workspace}}/motor_database.cfg

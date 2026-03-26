@@ -74,5 +74,30 @@ class MotorConstants:
         return hstrt - 1, hend + 3
 
 
+class MotorAlias:
+    def __init__(self, config):
+        self.name: str = config.get_name().split()[-1]
+        self.motor: str = config.get("motor")
+        self.deprecated: bool = config.getboolean("deprecated", default=False)
+
+    def register(self, printer) -> None:
+        target_name: str = "motor_constants " + self.motor
+        target = printer.lookup_object(target_name, default=None)
+        if target is None:
+            raise printer.config_error(
+                "Motor alias '%s' references unknown motor '%s'"
+                % (self.name, self.motor)
+            )
+        if not isinstance(target, MotorConstants):
+            raise printer.config_error(
+                "Motor alias '%s' targets '%s' which is not a motor definition"
+                % (self.name, self.motor)
+            )
+        alias_key = "motor_constants " + self.name
+        existing = printer.objects.get(alias_key)
+        if existing is None or isinstance(existing, MotorAlias):
+            printer.objects[alias_key] = target
+
+
 def load_config_prefix(config):
     return MotorConstants(config)

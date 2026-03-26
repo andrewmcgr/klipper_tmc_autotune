@@ -9,6 +9,8 @@ try:
 except ImportError:
     from . import tmc  # Klipper
 
+from . import motor_constants
+
 # Autotune config parameters
 TUNING_GOAL = "auto"
 EXTRA_HYSTERESIS = 0
@@ -96,8 +98,11 @@ class AutotuneTMC:
             motor_db = pconfig.read_config(filename)
         except Exception:
             raise config.error("Cannot load config '%s'" % (filename,))
-        for motor in motor_db.get_prefix_sections(""):
+        for motor in motor_db.get_prefix_sections("motor_constants"):
             self.printer.load_object(motor_db, motor.get_name())
+        for alias in motor_db.get_prefix_sections("motor_alias"):
+            alias_obj = motor_constants.MotorAlias(alias)
+            self.printer.objects[alias.get_name()] = alias_obj
 
         # Now find our stepper and driver in the running Klipper config
         self.name = config.get_name().split(None, 1)[-1]
@@ -186,6 +191,10 @@ class AutotuneTMC:
         )
 
     def handle_connect(self):
+        # Register aliases now that all user motor_constants are loaded
+        for name, obj in list(self.printer.objects.items()):
+            if isinstance(obj, motor_constants.MotorAlias):
+                obj.register(self.printer)
         self.tmc_object = self.printer.lookup_object(self.driver_name)
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
@@ -197,6 +206,19 @@ class AutotuneTMC:
                 "It is not part of the database, please define it in your config!"
                 % (self.motor_name)
             )
+        alias_obj = self.printer.lookup_object(
+            "motor_alias " + self.motor, default=None
+        )
+        if alias_obj is not None and alias_obj.deprecated:
+            alias_target = self.printer.lookup_object(
+                "motor_constants " + alias_obj.motor, default=None
+            )
+            if motor is alias_target:
+                pconfig = self.printer.lookup_object("configfile")
+                pconfig.runtime_warning(
+                    "Motor name '%s' is deprecated, please update your config "
+                    "to use '%s' instead." % (self.motor, alias_obj.motor)
+                )
         if self.tuning_goal == TuningGoal.AUTO:
             # Very small motors may not run in silent mode.
             self.auto_silent = (
