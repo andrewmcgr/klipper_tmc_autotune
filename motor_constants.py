@@ -44,7 +44,7 @@ class MotorConstants:
         self, extra=0, fclk=12.5e6, volts=24.0, current=0.0, tblank_cycles=24, toff=0
     ):
         effective_current = current if current > 0.0 else self.max_current
-        logging.info("autotune_tmc seting hysteresis based on %s V", volts)
+        logging.info("autotune_tmc setting hysteresis based on %s V", volts)
         tsd = (12.0 + 32.0 * toff) / fclk
         dcoilblank = volts * (tblank_cycles / fclk) / self.coil_inductance
         dcoilsd = (

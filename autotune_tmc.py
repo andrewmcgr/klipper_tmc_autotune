@@ -62,9 +62,9 @@ PWM_FREQ_TARGETS = {
     "tmc2208": 55e3,
     "tmc2209": 55e3,
     "tmc2240": 20e3,  # 2240s run very hot at high frequencies
-    "tmc2660": 20e3,  # Same as the 5160 for Klipper
+    "tmc2660": 20e3,  # 2660s and 5160s run very hot at high frequencies
     "tmc5160": 20e3,
-}  # 5160s run very hot at high frequencies
+}
 
 
 AUTO_PERFORMANCE_MOTORS = {
@@ -199,8 +199,8 @@ class AutotuneTMC:
         # The cmdhelper itself isn't a member... but we can still get to it.
         self.tmc_cmdhelper = self.tmc_object.get_status.__self__
         try:
-            motor = self.printer.lookup_object(self.motor_name)
-        except Exception:
+            self.motor_object = self.printer.lookup_object(self.motor_name)
+        except self.printer.config_error:
             raise self.printer.config_error(
                 "Could not find motor definition '[%s]' required by TMC autotuning. "
                 "It is not part of the database, please define it in your config!"
@@ -213,7 +213,7 @@ class AutotuneTMC:
             alias_target = self.printer.lookup_object(
                 "motor_constants " + alias_obj.motor, default=None
             )
-            if motor is alias_target:
+            if self.motor_object is alias_target:
                 pconfig = self.printer.lookup_object("configfile")
                 pconfig.runtime_warning(
                     "Motor name '%s' is deprecated, please update your config "
@@ -222,13 +222,12 @@ class AutotuneTMC:
         if self.tuning_goal == TuningGoal.AUTO:
             # Very small motors may not run in silent mode.
             self.auto_silent = (
-                self.name not in AUTO_PERFORMANCE_MOTORS and motor.holding_torque > 0.3
+                self.name not in AUTO_PERFORMANCE_MOTORS
+                and self.motor_object.holding_torque > 0.3
             )
             self.tuning_goal = (
                 TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
             )
-        self.motor_object = self.printer.lookup_object(self.motor_name)
-        # self.tune_driver()
 
     def handle_ready(self):
         # klippy:ready handlers are limited in what they may do. Communicating with a MCU
@@ -253,8 +252,10 @@ class AutotuneTMC:
             try:
                 self.tuning_goal = TuningGoal(tgoal)
             except ValueError:
-                # TODO: add some logging/error here in case the tuning_goal doesn't exist
-                pass
+                raise gcmd.error(
+                    "Invalid tuning goal '%s', must be one of: %s"
+                    % (tgoal, ", ".join(g.value for g in TuningGoal))
+                )
             if self.tuning_goal == TuningGoal.AUTO:
                 self.tuning_goal = (
                     TuningGoal.SILENT if self.auto_silent else TuningGoal.PERFORMANCE
@@ -263,37 +264,60 @@ class AutotuneTMC:
         if extra_hysteresis is not None:
             if extra_hysteresis >= 0 and extra_hysteresis <= 8:
                 self.extra_hysteresis = extra_hysteresis
+            else:
+                gcmd.respond_info(
+                    "EXTRA_HYSTERESIS=%d out of range (0-8), ignored" % extra_hysteresis
+                )
         tbl = gcmd.get_int("TBL", None)
         if tbl is not None:
             if tbl >= 0 and tbl <= 3:
                 self.tbl = tbl
+            else:
+                gcmd.respond_info("TBL=%d out of range (0-3), ignored" % tbl)
         toff = gcmd.get_int("TOFF", None)
         if toff is not None:
             if toff >= 1 and toff <= 15:
                 self.toff = toff
+            else:
+                gcmd.respond_info("TOFF=%d out of range (1-15), ignored" % toff)
         tpfd = gcmd.get_int("TPFD", None)
         if tpfd is not None:
             if tpfd >= 0 and tpfd <= 15:
                 self.tpfd = tpfd
+            else:
+                gcmd.respond_info("TPFD=%d out of range (0-15), ignored" % tpfd)
         sgt = gcmd.get_int("SGT", None)
         if sgt is not None:
             if sgt >= -64 and sgt <= 63:
                 self.sgt = sgt
+            else:
+                gcmd.respond_info("SGT=%d out of range (-64 to 63), ignored" % sgt)
         sg4_thrs = gcmd.get_int("SG4_THRS", None)
         if sg4_thrs is not None:
             if sg4_thrs >= 0 and sg4_thrs <= 255:
                 self.sg4_thrs = sg4_thrs
+            else:
+                gcmd.respond_info(
+                    "SG4_THRS=%d out of range (0-255), ignored" % sg4_thrs
+                )
         voltage = gcmd.get_float("VOLTAGE", None)
         if voltage is not None:
             if voltage >= 0.0 and voltage <= 60.0:
                 self.voltage = voltage
+            else:
+                gcmd.respond_info("VOLTAGE=%.1f out of range (0-60), ignored" % voltage)
         overvoltage_vth = gcmd.get_float("OVERVOLTAGE_VTH", None)
         if overvoltage_vth is not None:
             if overvoltage_vth >= 0.0 and overvoltage_vth <= 60.0:
                 self.overvoltage_vth = overvoltage_vth
+            else:
+                gcmd.respond_info(
+                    "OVERVOLTAGE_VTH=%.1f out of range (0-60), ignored"
+                    % overvoltage_vth
+                )
         self.tune_driver()
 
-    def tune_driver(self, print_time=None):
+    def tune_driver(self):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
         self._set_pwmfreq()
@@ -307,7 +331,7 @@ class AutotuneTMC:
         vmaxpwm = maxpwmrps * rdist
         logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
         if self.overvoltage_vth is not None:
-            vth = int((self.overvoltage_vth / 0.009732))
+            vth = int(self.overvoltage_vth / 0.009732)
             self._set_driver_field("overvoltage_vth", vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
@@ -357,7 +381,7 @@ class AutotuneTMC:
         tmco.fields.set_field(field, arg)
 
     def _set_pwmfreq(self):
-        # calculate the highest pwm_freq that gives less than 50 kHz chopping
+        # calculate the highest pwm_freq below pwm_freq_target
         pwm_freq = next(
             (
                 i
@@ -413,9 +437,7 @@ class AutotuneTMC:
             # With SG4 on 2209, pwmthrs should be greater than coolthrs
             return max(0.2 * vmaxpwm, 1.125 * coolthrs)
         else:
-            # We do not have SG4, so this makes the world safe for
-            # sensorless homing in the presence of CoolStep
-            # return 0.5 * coolthrs
+            # No SG4 — set pwmthrs for autoswitch mode transition
             return 0.5 * vmaxpwm
 
     def _setup_pwm(self, tgoal, pwmthrs):
@@ -458,9 +480,6 @@ class AutotuneTMC:
         if self.toff == 0 or self.toff is None:
             # About half the cycle should be taken by the two slow decay cycles
             self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
-
-        if self.tbl is None:
-            self.tbl = TBL
 
         if self.toff == 1 and self.tbl == 0:
             # blank time of 16 cycles will not work in this case
