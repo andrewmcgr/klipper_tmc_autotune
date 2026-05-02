@@ -1,7 +1,7 @@
 #!/bin/bash
 
 KLIPPER_PATH="${HOME}/klipper"
-AUTOTUNETMC_PATH="${HOME}/klipper_tmc_autotune"
+AUTOTUNETMC_PATH="$(dirname "$(readlink -f "$0")")"
 
 if [[ -e ${KLIPPER_PATH}/klippy/plugins/ ]]; then
     KLIPPER_PLUGINS_PATH="${KLIPPER_PATH}/klippy/plugins/"
