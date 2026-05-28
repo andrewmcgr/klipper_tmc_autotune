@@ -28,6 +28,7 @@ MULTISTEP_FILT = True
 
 # 2240-specific parameters
 SLOPE_CONTROL = 3
+TMC2240_OVERTEMP_PREWARNING_VTH = 0x0B92  # 120C
 
 # PWM parameters
 PWM_AUTOSCALE = True  # Setup pwm autoscale even if we won't use PWM, because it
@@ -332,7 +333,7 @@ class AutotuneTMC:
         logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
         if self.overvoltage_vth is not None:
             vth = int(self.overvoltage_vth / 0.009732)
-            self._set_driver_field("overvoltage_vth", vth)
+            self._set_overvoltage_vth(vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
         # One revolution every two seconds is about as slow as coolstep can go
@@ -351,6 +352,35 @@ class AutotuneTMC:
         logging.info("autotune_tmc set %s %s=%s", self.name, field, repr(arg))
         val = tmco.fields.set_field(field, arg)
         tmco.mcu_tmc.set_register(register, val, None)
+
+    def _set_overvoltage_vth(self, arg):
+        tmco = self.tmc_object
+        register = tmco.fields.lookup_register("overvoltage_vth", None)
+        if register is None:
+            return
+        otpw_register = tmco.fields.lookup_register("overtempprewarning_vth", None)
+        if self.driver_type == "tmc2240" and otpw_register == register:
+            reg_val = tmco.fields.registers.get(register)
+            if reg_val is None:
+                try:
+                    reg_val = tmco.mcu_tmc.get_register(register)
+                except self.printer.command_error:
+                    reg_val = 0
+            otpw_vth = tmco.fields.get_field(
+                "overtempprewarning_vth", reg_val, register
+            )
+            if not otpw_vth:
+                reg_val = tmco.fields.set_field(
+                    "overtempprewarning_vth",
+                    TMC2240_OVERTEMP_PREWARNING_VTH,
+                    reg_val,
+                    register,
+                )
+            logging.info("autotune_tmc set %s overvoltage_vth=%s", self.name, repr(arg))
+            val = tmco.fields.set_field("overvoltage_vth", arg, reg_val, register)
+            tmco.mcu_tmc.set_register(register, val, None)
+            return
+        self._set_driver_field("overvoltage_vth", arg)
 
     def _set_driver_velocity_field_new(self, field, velocity):
         tmco = self.tmc_object
