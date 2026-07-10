@@ -45,7 +45,8 @@ class MotorConstants:
     ):
         effective_current = current if current > 0.0 else self.max_current
         logging.info("autotune_tmc setting hysteresis based on %s V", volts)
-        tsd = (12.0 + 32.0 * toff) / fclk
+        # Slow decay phase duration NCLK = 24 + 32*TOFF per the CHOPCONF register.
+        tsd = (24.0 + 32.0 * toff) / fclk
         dcoilblank = volts * (tblank_cycles / fclk) / self.coil_inductance
         dcoilsd = (
             self.coil_resistance * effective_current * 2.0 * tsd / self.coil_inductance
