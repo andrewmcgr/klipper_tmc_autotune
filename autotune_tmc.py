@@ -530,7 +530,7 @@ class AutotuneTMC:
     def _setup_coolstep(self, coolthrs):
         self._set_driver_velocity_field("tcoolthrs", coolthrs)
         self._set_driver_field("sgt", self.sgt)
-        self._set_driver_field("fast_standstill", FAST_STANDSTILL)
+        self._set_driver_field("faststandstill", FAST_STANDSTILL)
         self._set_driver_field("small_hysteresis", SMALL_HYSTERESIS)
         self._set_driver_field("semin", self.se_min)
         self._set_driver_field("semax", self.se_max)
