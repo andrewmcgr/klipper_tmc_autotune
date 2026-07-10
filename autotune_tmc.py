@@ -411,7 +411,7 @@ class AutotuneTMC:
         tmco.fields.set_field(field, arg)
 
     def _set_pwmfreq(self):
-        # calculate the highest pwm_freq below pwm_freq_target
+        # calculate the highest pwm_freq at or below pwm_freq_target
         pwm_freq = next(
             (
                 i
@@ -422,7 +422,7 @@ class AutotuneTMC:
                     (0, 2.0 / 1024),
                     (0, 0.0),  # Default case, just do the best we can.
                 ]
-                if self.fclk * i[1] < self.pwm_freq_target
+                if self.fclk * i[1] <= self.pwm_freq_target
             )
         )[0]
         self._set_driver_field("pwm_freq", pwm_freq)
