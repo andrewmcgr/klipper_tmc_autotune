@@ -170,8 +170,11 @@ class AutotuneTMC:
         self.voltage = config.getfloat(
             "voltage", default=VOLTAGE, minval=0.0, maxval=60.0
         )
+        # A zero threshold asserts the overvoltage condition continuously, and
+        # values above the TMC2240 absolute maximum cannot protect it in time.
+        # Leaving the option unset preserves the driver's hardware default.
         self.overvoltage_vth = config.getfloat(
-            "overvoltage_vth", default=OVERVOLTAGE_VTH, minval=0.0, maxval=60.0
+            "overvoltage_vth", default=OVERVOLTAGE_VTH, above=0.0, maxval=41.0
         )
         self.pwm_freq_target = config.getfloat(
             "pwm_freq_target",
@@ -309,11 +312,11 @@ class AutotuneTMC:
                 gcmd.respond_info("VOLTAGE=%.1f out of range (0-60), ignored" % voltage)
         overvoltage_vth = gcmd.get_float("OVERVOLTAGE_VTH", None)
         if overvoltage_vth is not None:
-            if overvoltage_vth >= 0.0 and overvoltage_vth <= 60.0:
+            if overvoltage_vth > 0.0 and overvoltage_vth <= 41.0:
                 self.overvoltage_vth = overvoltage_vth
             else:
                 gcmd.respond_info(
-                    "OVERVOLTAGE_VTH=%.1f out of range (0-60), ignored"
+                    "OVERVOLTAGE_VTH=%.1f out of range (0-41), ignored"
                     % overvoltage_vth
                 )
         self.tune_driver()
@@ -324,6 +327,22 @@ class AutotuneTMC:
         # Validate before any hardware write: out-of-range values would be masked
         # into the 8-bit fields and also drive maxpwmrps() negative.
         self._check_pwm_field_ranges()
+        # Program the overvoltage threshold before any other register write, so a
+        # rejected value cannot leave the driver partially retuned. Quantize
+        # upward and validate the value that actually reaches the register: a
+        # flooring conversion could otherwise program a threshold below the supply
+        # and assert the overvoltage condition continuously. Done here rather than
+        # at parse time so a runtime VOLTAGE change is also covered.
+        if self.overvoltage_vth is not None:
+            vth = int(math.ceil(self.overvoltage_vth / 0.009732))
+            if vth * 0.009732 <= self.voltage:
+                raise self.printer.command_error(
+                    "Autotune %s: overvoltage_vth=%.3f V programs %.3f V, which "
+                    "does not exceed the supply voltage %.1f V; the overvoltage "
+                    "condition would assert continuously."
+                    % (self.name, self.overvoltage_vth, vth * 0.009732, self.voltage)
+                )
+            self._set_overvoltage_vth(vth)
         self._set_pwmfreq()
         self._setup_spreadcycle()
         self._set_hysteresis(self.run_current)
@@ -336,9 +355,6 @@ class AutotuneTMC:
         # Speed at which we run out of PWM control and should switch to fullstep
         vmaxpwm = maxpwmrps * rdist
         logging.info("autotune_tmc using max PWM speed %f", vmaxpwm)
-        if self.overvoltage_vth is not None:
-            vth = int(self.overvoltage_vth / 0.009732)
-            self._set_overvoltage_vth(vth)
         coolthrs = COOLSTEP_THRS_FACTOR * rdist
         self._setup_pwm(self.tuning_goal, self._pwmthrs(vmaxpwm, coolthrs))
         # One revolution every two seconds is about as slow as coolstep can go

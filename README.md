@@ -97,7 +97,7 @@ All the `[autotune_tmc]` sections accept additional parameters to tweak the beha
 | seimin | 1 | 0 to 1 | **Coolstep**: Sets the lower motor current limit for CoolStep operation by scaling the run current. 0 = 50%, 1 = 25% of run current. |
 | pwm_freq_target | varies | 10e3 to 60e3 | Switching frequency target, in Hz. The code selects the highest available PWM frequency at or below this target, which usually results in 48 kHz switching. Defaults to 55 kHz for TMC2130/2208/2209 and 20 kHz for TMC2240/2660/5160 to avoid excessive driver heat. |
 | voltage | 24 | 0.0 to 60.0 | Voltage used to power this motor and stepper driver |
-| overvoltage_vth |  | 0.0 to 60.0 | Set the optional overvoltage snubber built into the TMC2240 and TMC5160. Users of the BTT SB2240 toolhead board should use it for the extruder by reading the actual toolhead voltage and adding 0.8V |
+| overvoltage_vth |  | above 0.0 to 41.0 | Set the optional overvoltage snubber built into the TMC2240 and TMC5160. Users of the BTT SB2240 toolhead board should use it for the extruder by reading the actual toolhead voltage and adding 0.8V |
 
 Also if needed, you can adjust everything on the go when the printer is running by using the `AUTOTUNE_TMC` macro in the Klipper console. All previous parameters are available:
 ```
