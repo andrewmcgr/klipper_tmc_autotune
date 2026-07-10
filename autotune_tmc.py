@@ -326,7 +326,9 @@ class AutotuneTMC:
         self._set_hysteresis(self.run_current)
         self._set_sg4thrs()
         motor = self.motor_object
-        maxpwmrps = motor.maxpwmrps(volts=self.voltage, current=self.run_current)
+        maxpwmrps = motor.maxpwmrps(
+            fclk=self.fclk, volts=self.voltage, current=self.run_current
+        )
         rdist, _ = self.tmc_cmdhelper.stepper.get_rotation_distance()
         # Speed at which we run out of PWM control and should switch to fullstep
         vmaxpwm = maxpwmrps * rdist
