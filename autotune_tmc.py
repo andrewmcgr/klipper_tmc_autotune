@@ -176,6 +176,13 @@ class AutotuneTMC:
         self.overvoltage_vth = config.getfloat(
             "overvoltage_vth", default=OVERVOLTAGE_VTH, above=0.0, maxval=41.0
         )
+        # Only the TMC2240 has a programmable overvoltage threshold; reject the
+        # option on other drivers instead of silently ignoring it.
+        if self.overvoltage_vth is not None and self.driver_type != "tmc2240":
+            raise config.error(
+                "overvoltage_vth is only supported on TMC2240, but the driver "
+                "for '%s' is %s." % (self.name, self.driver_type)
+            )
         self.pwm_freq_target = config.getfloat(
             "pwm_freq_target",
             default=PWM_FREQ_TARGETS[self.driver_type],
@@ -312,7 +319,11 @@ class AutotuneTMC:
                 gcmd.respond_info("VOLTAGE=%.1f out of range (0-60), ignored" % voltage)
         overvoltage_vth = gcmd.get_float("OVERVOLTAGE_VTH", None)
         if overvoltage_vth is not None:
-            if overvoltage_vth > 0.0 and overvoltage_vth <= 41.0:
+            if self.driver_type != "tmc2240":
+                gcmd.respond_info(
+                    "OVERVOLTAGE_VTH is only supported on TMC2240, ignored"
+                )
+            elif overvoltage_vth > 0.0 and overvoltage_vth <= 41.0:
                 self.overvoltage_vth = overvoltage_vth
             else:
                 gcmd.respond_info(
