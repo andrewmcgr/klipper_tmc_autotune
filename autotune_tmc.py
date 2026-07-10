@@ -150,7 +150,7 @@ class AutotuneTMC:
             "extra_hysteresis", default=EXTRA_HYSTERESIS, minval=0, maxval=8
         )
         self.tbl = config.getint("tbl", default=TBL, minval=0, maxval=3)
-        self.toff = config.getint("toff", default=None, minval=1, maxval=15)
+        self.toff = config.getint("toff", default=TOFF, minval=0, maxval=15)
         self.tpfd = config.getint("tpfd", default=None, minval=0, maxval=15)
         self.sgt = config.getint("sgt", default=SGT, minval=-64, maxval=63)
         # TMC2240: default sg4_thrs to 0 so Klipper uses the SGT homing path,
@@ -280,10 +280,10 @@ class AutotuneTMC:
                 gcmd.respond_info("TBL=%d out of range (0-3), ignored" % tbl)
         toff = gcmd.get_int("TOFF", None)
         if toff is not None:
-            if toff >= 1 and toff <= 15:
+            if toff >= 0 and toff <= 15:
                 self.toff = toff
             else:
-                gcmd.respond_info("TOFF=%d out of range (1-15), ignored" % toff)
+                gcmd.respond_info("TOFF=%d out of range (0-15), ignored" % toff)
         tpfd = gcmd.get_int("TPFD", None)
         if tpfd is not None:
             if tpfd >= 0 and tpfd <= 15:
@@ -556,7 +556,7 @@ class AutotuneTMC:
     def _setup_spreadcycle(self):
         ncycles = int(math.ceil(self.fclk / self.pwm_freq_target))
         sdcycles = ncycles / 4
-        if self.toff == 0 or self.toff is None:
+        if self.toff == 0:
             # About half the cycle should be taken by the two slow decay cycles
             self.toff = max(min(int(math.ceil(max(sdcycles - 24, 0) / 32)), 15), 1)
 
