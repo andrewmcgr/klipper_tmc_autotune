@@ -321,6 +321,9 @@ class AutotuneTMC:
     def tune_driver(self):
         _currents = self.tmc_cmdhelper.current_helper.get_current()
         self.run_current = _currents[0]
+        # Validate before any hardware write: out-of-range values would be masked
+        # into the 8-bit fields and also drive maxpwmrps() negative.
+        self._check_pwm_field_ranges()
         self._set_pwmfreq()
         self._setup_spreadcycle()
         self._set_hysteresis(self.run_current)
@@ -344,6 +347,34 @@ class AutotuneTMC:
         self._set_driver_field("multistep_filt", MULTISTEP_FILT)
         # Cool down 2240s
         self._set_driver_field("slope_control", SLOPE_CONTROL)
+
+    def _check_pwm_field_ranges(self):
+        # PWM_OFS and PWM_GRAD are 8-bit fields. Klipper's FieldHelper.set_field()
+        # masks values into the field width rather than validating them, so an
+        # out-of-range result would wrap. Drivers without StealthChop (e.g.
+        # tmc2660) have neither field, so skip a check when the field is absent.
+        motor = self.motor_object
+        fields = self.tmc_object.fields
+        if fields.lookup_register("pwm_ofs", None) is not None:
+            # PWM_OFS must stay below 255: at 255 there is no headroom and
+            # maxpwmrps() collapses to zero. It scales with run current.
+            pwm_ofs = motor.pwmofs(volts=self.voltage, current=self.run_current)
+            if not 0 <= pwm_ofs < 255:
+                raise self.printer.command_error(
+                    "Autotune %s: computed PWM_OFS=%d leaves no headroom below "
+                    "the 8-bit limit for motor '%s' at %.1f V and %.2f A. Lower "
+                    "the run current or raise the supply voltage."
+                    % (self.name, pwm_ofs, self.motor, self.voltage, self.run_current)
+                )
+        if fields.lookup_register("pwm_grad", None) is not None:
+            # PWM_GRAD depends on back-EMF and supply voltage, not run current.
+            pwm_grad = motor.pwmgrad(volts=self.voltage, fclk=self.fclk)
+            if not 0 <= pwm_grad <= 255:
+                raise self.printer.command_error(
+                    "Autotune %s: computed PWM_GRAD=%d exceeds the 8-bit field "
+                    "for motor '%s' at %.1f V. Raise the supply voltage."
+                    % (self.name, pwm_grad, self.motor, self.voltage)
+                )
 
     def _set_driver_field(self, field, arg):
         tmco = self.tmc_object
