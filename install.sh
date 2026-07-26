@@ -3,6 +3,13 @@
 KLIPPER_PATH="${HOME}/klipper"
 AUTOTUNETMC_PATH="${HOME}/klipper_tmc_autotune"
 
+IS_K1_OS=0
+if grep -Fqs "ID=buildroot" /etc/os-release; then
+    KLIPPER_PATH="/usr/share/klipper"
+    AUTOTUNETMC_PATH="/usr/data/klipper_tmc_autotune"
+    IS_K1_OS=1
+fi
+
 if [[ -e ${KLIPPER_PATH}/klippy/plugins/ ]]; then
     KLIPPER_PLUGINS_PATH="${KLIPPER_PATH}/klippy/plugins/"
 else
@@ -14,16 +21,18 @@ export LC_ALL=C
 
 
 function preflight_checks {
-    if [ "$EUID" -eq 0 ]; then
-        echo "[PRE-CHECK] This script must not be run as root!"
-        exit 1
-    fi
+    if [ $IS_K1_OS -ne 1 ]; then
+      if [ "$EUID" -eq 0 ]; then
+          echo "[PRE-CHECK] This script must not be run as root!"
+          exit 1
+      fi
 
-    if sudo systemctl list-units --full -all -t service --no-legend | grep -q 'klipper.service'; then
-        echo "[PRE-CHECK] Klipper service found!"
-    else
-        echo "[ERROR] Klipper service not found, please install Klipper first!"
-        exit 1
+      if sudo systemctl list-units --full -all -t service --no-legend | grep -q 'klipper.service'; then
+          echo "[PRE-CHECK] Klipper service found!"
+      else
+          echo "[ERROR] Klipper service not found, please install Klipper first!"
+          exit 1
+      fi
     fi
 
     # Try to determine the klippy virtual environment from the local Moonraker instance
@@ -65,14 +74,22 @@ function check_download {
 function link_extension {
     echo "[INSTALL] Linking extension to Klipper..."
 
-    ln -srfn "${AUTOTUNETMC_PATH}/autotune_tmc.py" "${KLIPPER_PLUGINS_PATH}/autotune_tmc.py"
-    ln -srfn "${AUTOTUNETMC_PATH}/motor_constants.py" "${KLIPPER_PLUGINS_PATH}/motor_constants.py"
-    ln -srfn "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PLUGINS_PATH}/motor_database.cfg"
+    LN_ARGS="-srfn"
+    if [ $IS_K1_OS -eq 1 ]; then
+      LN_ARGS="-sfn"
+    fi
+    ln $LN_ARGS "${AUTOTUNETMC_PATH}/autotune_tmc.py" "${KLIPPER_PLUGINS_PATH}/autotune_tmc.py"
+    ln $LN_ARGS "${AUTOTUNETMC_PATH}/motor_constants.py" "${KLIPPER_PLUGINS_PATH}/motor_constants.py"
+    ln $LN_ARGS "${AUTOTUNETMC_PATH}/motor_database.cfg" "${KLIPPER_PLUGINS_PATH}/motor_database.cfg"
 }
 
 function restart_klipper {
     echo "[POST-INSTALL] Restarting Klipper..."
-    sudo systemctl restart klipper
+    if [ $IS_K1_OS -eq 1 ]; then
+      /etc/init.d/S55klipper_service restart
+    else
+      sudo systemctl restart klipper
+    fi
 }
 
 
