@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          pip install ruff==0.15.22
       # Update output format to enable automatic inline annotations.
       - name: Run Ruff
         run: ruff check --output-format=github .
