@@ -253,6 +253,24 @@ class AutotuneTMC:
         if self.fclk is None:
             self.fclk = 12.5e6
         self.tune_driver()
+        # Klipper's TMCCommandHelper snapshots TOFF at klippy:connect time (before
+        # autotune has computed its value) for steppers using virtual/soft enable,
+        # and restores that stale snapshot on every re-enable. Reapply our tuned
+        # value afterward so it isn't clobbered; see GH-354.
+        enable_line = self.tmc_cmdhelper.stepper_enable.lookup_enable(
+            self.tmc_cmdhelper.stepper_name
+        )
+        if not enable_line.has_dedicated_enable():
+            enable_line.register_state_callback(self._handle_stepper_enable)
+
+    def _handle_stepper_enable(self, print_time, is_enable):
+        if not is_enable:
+            return
+
+        def reapply_toff(eventtime):
+            self._set_driver_field("toff", self.toff)
+
+        self.printer.reactor.register_callback(reapply_toff)
 
     cmd_AUTOTUNE_TMC_help = "Apply autotuning configuration to TMC stepper driver"
 
